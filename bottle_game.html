@@ -77,10 +77,15 @@ class GameScene extends Phaser.Scene {
     this.displayWidth = this.scale.displaySize.width;
     this.displayHeight = this.scale.displaySize.height;
 
-    // 1. BACKGROUND (use base world coordinates so camera can move)
+    // 1. BACKGROUND & scale factors
+    // Use the actual display size so objects map correctly to portrait/landscape
+    const dispW = this.scale.displaySize.width;
+    const dispH = this.scale.displaySize.height;
+    const sx = dispW / this.gameWidth;
+    const sy = dispH / this.gameHeight;
+
     const bg = this.add.image(0, 0, 'background').setOrigin(0, 0);
-    bg.setDisplaySize(this.gameWidth, this.gameHeight);
-    bg.setScrollFactor(0);
+    bg.setDisplaySize(dispW, dispH);
 
     // 2. GENERATE TEXTURES
     this.makeBetterPlayer(); 
@@ -88,15 +93,15 @@ class GameScene extends Phaser.Scene {
     this.makeTrashCanTexture();
     this.makePlatformTextures();
 
-    // 3. PHYSICS & FLOOR (world in base coords)
-    this.physics.world.setBounds(0, 0, this.gameWidth, this.gameHeight);
+    // 3. PHYSICS & FLOOR
     this.platforms = this.physics.add.staticGroup();
-    const groundY = this.gameHeight - 105; // base coordinate
-    const groundBody = this.add.rectangle(this.gameWidth / 2, groundY, this.gameWidth, 20, 0x000000, 0);
+    const groundYBase = this.gameHeight - 105; // base coordinate
+    const groundY = groundYBase * sy;
+    const groundBody = this.add.rectangle((this.gameWidth/2) * sx, groundY, this.gameWidth * sx, 20 * sy, 0x000000, 0);
     this.physics.add.existing(groundBody, true);
     this.platforms.add(groundBody);
 
-    // 4. PLATFORMS - base positions
+    // 4. PLATFORMS - scaled positions
     const levelLayoutBase = [
       {x: 220, y: 440, w: 150, c: 'plat_red'},
       {x: 450, y: 360, w: 150, c: 'plat_blue'},
@@ -107,21 +112,26 @@ class GameScene extends Phaser.Scene {
     ];
 
     levelLayoutBase.forEach(pb => {
-      const plat = this.add.rectangle(pb.x, pb.y, pb.w, 35, 0x8d6e63);
-      this.physics.add.existing(plat, true);
-      this.platforms.add(plat);
+      const px = pb.x * sx;
+      const py = pb.y * sy;
+      const pw = pb.w * sx;
+      const plat = this.platforms.create(px, py, pb.c);
+      plat.setDisplaySize(pw, 35 * sy);
+      plat.refreshBody();
     });
 
-    // 5. TRASH CAN - base coords
-    const trashCanX = this.gameWidth - 70;
-    const trashCanY = groundY - 40;
+    // 5. TRASH CAN - scaled
+    const trashCanX = (this.gameWidth - 70) * sx;
+    const trashCanY = (groundYBase - 40) * sy;
     this.trashCan = this.physics.add.staticSprite(trashCanX, trashCanY, 'trashcan');
-    this.trashCan.setDisplaySize(60, 80);
+    this.trashCan.setDisplaySize(60 * sx, 80 * sy);
     this.trashCan.setDepth(5);
 
-    // 6. PLAYER - base start position
-    this.player = this.physics.add.sprite(100, groundY - 95, 'player_idle');
-    this.player.setDisplaySize(50, 90);
+    // 6. PLAYER - scaled start position
+    const playerX = 100 * sx;
+    const playerY = (groundYBase - 95) * sy;
+    this.player = this.physics.add.sprite(playerX, playerY, 'player_idle');
+    this.player.setDisplaySize(50 * sx, 90 * sy);
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(10);
     this.player.setBounce(0.1);
@@ -130,20 +140,15 @@ class GameScene extends Phaser.Scene {
     this.walkFrame = 0;      // 0 = idle, 1 & 2 = walking frames
     this.walkAnimTime = 0;   // time accumulator for walk animation
 
-    // 7. BOTTLES - base positions
+    // 7. BOTTLES - scaled
     this.bottles = this.physics.add.group();
     levelLayoutBase.forEach(pb => {
-      const b = this.bottles.create(pb.x, pb.y - 60, 'glass');
+      const bx = pb.x * sx;
+      const by = (pb.y - 60) * sy;
+      const b = this.bottles.create(bx, by, 'glass');
       b.body.allowGravity = false;
+      b.setDisplaySize(30 * sx, 50 * sy);
     });
-
-    // CAMERA: set bounds and follow with deadzone so camera only moves after player passes central area
-    this.cameras.main.setBounds(0, 0, this.gameWidth, this.gameHeight);
-    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    // deadzone width/height: make it proportional to world
-    const dzW = Math.round(this.gameWidth * 0.3);
-    const dzH = Math.round(this.gameHeight * 0.25);
-    this.cameras.main.setDeadzone(dzW, dzH);
 
     // COLLIDERS
     this.physics.add.collider(this.player, this.platforms);
@@ -160,7 +165,7 @@ class GameScene extends Phaser.Scene {
     this.deposited = 0;
     // Score text - responsive font size
     const fontSize = this.isMobile ? 18 : 26;
-    this.scoreText = this.add.text(20 * sx, 20 * sy, 'ჩანთაში: 0 | შეგროვებული: 0', {
+    this.scoreText = this.add.text(20 * scaleX, 20 * scaleY, 'ჩანთაში: 0 | შეგროვებული: 0', {
       fontSize: fontSize + 'px', fill: '#fff', stroke: '#000', strokeThickness: 5
     }).setScrollFactor(0);
 
@@ -383,25 +388,23 @@ class GameScene extends Phaser.Scene {
 
   // --- POPUP UI FUNCTION ---
   showPopup(titleText, descText, btnLabel, callback) {
+    const centerX = this.gameWidth / 2;
+    const centerY = this.gameHeight / 2;
     const isMobile = this.isMobile;
-    const dispW = this.scale.displaySize.width;
-    const dispH = this.scale.displaySize.height;
-    const centerX = Math.round(dispW / 2);
-    const centerY = Math.round(dispH / 2);
-
+    
     // Dark Overlay - positioned at screen center
-    const overlay = this.add.rectangle(centerX, centerY, dispW, dispH, 0x000000, 0.7).setDepth(99);
-
+    const overlay = this.add.rectangle(centerX, centerY, this.gameWidth, this.gameHeight, 0x000000, 0.7).setDepth(99);
+    
     // Container for popup elements
     const container = this.add.container(centerX, centerY).setDepth(100);
 
-    // Responsive popup sizes (use display size to compute)
-    const boxWidth = isMobile ? Math.round(dispW * 0.85) : 450;
-    const boxHeight = isMobile ? Math.round(dispH * 0.5) : 300;
+    // Responsive popup sizes
+    const boxWidth = isMobile ? this.gameWidth * 0.85 : 450;
+    const boxHeight = isMobile ? this.gameHeight * 0.5 : 300;
     const titleFontSize = isMobile ? 32 : 42;
     const descFontSize = isMobile ? 18 : 22;
     const btnFontSize = isMobile ? 20 : 24;
-    const btnWidth = isMobile ? Math.round(boxWidth * 0.7) : 220;
+    const btnWidth = isMobile ? boxWidth * 0.7 : 220;
     const btnHeight = isMobile ? 50 : 60;
 
     // Background Box
