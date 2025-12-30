@@ -1,310 +1,342 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Poti Game - Final Zoomed Version</title>
-    <style>
-        /* --- UI & CONTROL STYLES --- */
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #222; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
-        #game-container { width: 100%; height: 100%; display: block; }
-        #ui-layer { position: fixed; top: 0; left: 0; right: 0; padding: 10px; pointer-events: none; z-index: 10; display: flex; justify-content: space-between; text-shadow: 2px 2px 2px #000; }
-        .hud-text { color: white; font-weight: bold; font-size: 18px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 8px; }
-        .controls { position: fixed; bottom: 20px; width: 100%; height: 80px; z-index: 20; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; pointer-events: none; }
-        .btn-group { display: flex; gap: 15px; pointer-events: auto; }
-        .control-btn { width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%; color: white; font-size: 30px; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; }
-        .control-btn:active { background: rgba(67, 160, 71, 0.8); transform: scale(0.95); }
-        .jump-btn { background: rgba(255, 107, 53, 0.4); }
-        .jump-btn:active { background: rgba(255, 107, 53, 0.9); }
-        #popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 100; visibility: hidden; opacity: 0; transition: opacity 0.3s; }
-        #popup-box { background: white; padding: 20px; border-radius: 12px; border-top: 5px solid #43a047; text-align: center; max-width: 90%; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .popup-btn { background: #43a047; color: white; border: none; padding: 12px 24px; font-size: 18px; border-radius: 6px; margin-top: 15px; cursor: pointer; }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Poti Game - Solid Ground</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #222; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
+    
+    /* UI Layer */
+    #ui-layer {
+      position: fixed; top: 0; left: 0; width: 100%; padding: 20px; pointer-events: none; z-index: 10;
+      display: flex; justify-content: space-between;
+    }
+    .hud-text {
+      color: white; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 0 #000;
+      background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 8px;
+    }
+
+    /* Controls */
+    .controls {
+      position: fixed; bottom: 30px; width: 100%; height: 90px; z-index: 20;
+      display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; pointer-events: none;
+    }
+    .btn-group { display: flex; gap: 20px; pointer-events: auto; }
+    .control-btn {
+      width: 80px; height: 80px; background: rgba(255, 255, 255, 0.25);
+      border: 3px solid rgba(255, 255, 255, 0.6); border-radius: 50%;
+      color: white; font-size: 32px; display: flex; align-items: center; justify-content: center;
+      user-select: none; -webkit-tap-highlight-color: transparent;
+    }
+    .control-btn:active { background: rgba(0, 255, 0, 0.5); transform: scale(0.95); }
+    .jump-btn { background: rgba(255, 165, 0, 0.4); }
+
+    /* Game Area */
+    #game-container { width: 100%; height: 100%; display: block; }
+
+    /* Victory Popup */
+    #popup-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8);
+      display: flex; justify-content: center; align-items: center; z-index: 100;
+      visibility: hidden; opacity: 0; transition: opacity 0.3s;
+    }
+    #popup-box {
+      background: white; padding: 25px; border-radius: 12px; text-align: center; width: 300px;
+      border-top: 6px solid #43a047;
+    }
+    .popup-btn {
+      background: #43a047; color: white; border: none; padding: 10px 20px; font-size: 18px;
+      border-radius: 6px; margin-top: 15px; cursor: pointer;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
 </head>
 <body>
 
-    <div id="ui-layer">
-        <div class="hud-text">ფოთი: Level 1</div>
-        <div class="hud-text" id="score-display">ჩანთაში: 0 | სულ: 0</div>
+  <div id="ui-layer">
+    <div class="hud-text">LEVEL 1</div>
+    <div class="hud-text" id="score-display">Bag: 0 | Total: 0</div>
+  </div>
+
+  <div class="controls">
+    <div class="btn-group">
+      <div id="btn-left" class="control-btn">←</div>
+      <div id="btn-right" class="control-btn">→</div>
     </div>
-
-    <div class="controls">
-        <div class="btn-group">
-            <div id="btn-left" class="control-btn">←</div>
-            <div id="btn-right" class="control-btn">→</div>
-        </div>
-        <div class="btn-group">
-            <div id="btn-jump" class="control-btn jump-btn">↑</div>
-        </div>
+    <div class="btn-group">
+      <div id="btn-jump" class="control-btn jump-btn">↑</div>
     </div>
+  </div>
 
-    <div id="popup-overlay">
-        <div id="popup-box">
-            <h2 id="popup-title" style="color: #1b5e20; margin: 0 0 10px 0;">TITLE</h2>
-            <p id="popup-desc" style="font-size: 16px; color: #333; line-height: 1.5;">Description</p>
-            <button id="popup-btn" class="popup-btn">OK</button>
-        </div>
+  <div id="popup-overlay">
+    <div id="popup-box">
+      <h2 style="margin-top:0;">You Win!</h2>
+      <p>Nature is clean again.</p>
+      <button class="popup-btn" onclick="location.reload()">Replay</button>
     </div>
+  </div>
 
-    <div id="game-container"></div>
+  <div id="game-container"></div>
 
-    <script>
-    class GameScene extends Phaser.Scene {
-        constructor() {
-            super('GameScene');
-            this.totalBottles = 6;
-            this.gameActive = false;
-            this.inputs = { left: false, right: false, jump: false };
-            this.walkFrame = 0;
-            this.walkAnimTime = 0;
-        }
+<script>
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super('GameScene');
+    this.inputs = { left: false, right: false, jump: false };
+    this.collected = 0;
+    this.deposited = 0;
+    this.totalBottles = 6;
+    this.walkTimer = 0;
+  }
 
-        preload() {
-            // 1. LOAD HIGH-RES BACKGROUND
-            this.load.image('bg_highres', 'https://play.rosebud.ai/assets/cartoon-forest-landscape-background_23-2148924876.jpg?N69E');
+  preload() {
+    // Generate all graphics in code so nothing is missing
+    this.createPlayerPoses();
+    this.createPlatformTextures();
+    this.createItemTextures();
+    this.createEnvironmentTextures(); // Clouds and trees
+  }
 
-            // 2. GENERATE HIGH-QUALITY CHARACTER & ITEMS
-            this.createPlayerPoses(); // Animated character with arms
-            this.makeBottleTextures();
-            this.makeTrashCanTexture();
-            this.makePlatformTextures();
-        }
+  create() {
+    // 1. Setup World
+    // We make the world 1600x1200
+    const worldW = 1600;
+    const worldH = 1200; 
+    this.physics.world.setBounds(0, 0, worldW, worldH);
+    
+    // Background Color (Nice Sky Blue)
+    this.cameras.main.setBackgroundColor('#87CEEB');
 
-        create() {
-            // Define a large world size
-            const worldWidth = 2400;
-            const worldHeight = 1200;
-            this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
+    // Add some clouds for decoration
+    this.add.image(200, 200, 'cloud').setAlpha(0.8);
+    this.add.image(800, 150, 'cloud').setAlpha(0.6);
+    this.add.image(1300, 250, 'cloud').setAlpha(0.8);
 
-            // --- 1. BACKGROUND ---
-            // Stretch the high-res image to cover the entire world
-            const bg = this.add.image(0, 0, 'bg_highres').setOrigin(0, 0);
-            bg.setDisplaySize(worldWidth, worldHeight);
+    // 2. THE GROUND (Fixed to not look like it's floating)
+    this.platforms = this.physics.add.staticGroup();
+    
+    // The visual "Dirt" block - Extends WAY down so you never see the bottom edge
+    // Positioning it at the bottom center of the world
+    this.add.rectangle(worldW/2, worldH, worldW, 400, 0x5d4037).setOrigin(0.5, 1); 
+    
+    // The Physics "Grass" surface on top of the dirt
+    // Placed at y = worldH - 380 (So it sits on top of the visual dirt)
+    const groundY = worldH - 100;
+    
+    // Draw visual dirt filling the space below the ground line
+    this.add.rectangle(worldW/2, worldH + 200, worldW, 600, 0x5d4037);
 
-            // --- 2. PLATFORMS & GROUND ---
-            this.platforms = this.physics.add.staticGroup();
-            
-            // Create the main ground at the bottom of the world
-            // Using a color that blends with the forest floor
-            const ground = this.add.rectangle(worldWidth/2, worldHeight - 20, worldWidth, 60, 0x3e2723); 
-            this.physics.add.existing(ground, true);
-            this.platforms.add(ground);
+    // The actual physics ground
+    const ground = this.add.rectangle(worldW/2, groundY, worldW, 60, 0x4caf50); 
+    this.physics.add.existing(ground, true);
+    this.platforms.add(ground);
 
-            const levels = [
-                {x: 400, y: 1000, w: 200, c: 'plat_red'}, {x: 800, y: 900, w: 200, c: 'plat_blue'},
-                {x: 1200, y: 800, w: 200, c: 'plat_yellow'}, {x: 1600, y: 700, w: 200, c: 'plat_green'},
-                {x: 2000, y: 600, w: 200, c: 'plat_red'}, {x: 1000, y: 500, w: 150, c: 'plat_blue'}
-            ];
+    // 3. Platforms (Floating)
+    const levels = [
+      {x: 300, y: groundY - 150, t: 'plat_red'},
+      {x: 600, y: groundY - 250, t: 'plat_blue'},
+      {x: 900, y: groundY - 350, t: 'plat_yellow'},
+      {x: 500, y: groundY - 450, t: 'plat_green'},
+      {x: 1200, y: groundY - 300, t: 'plat_blue'},
+      {x: 1450, y: groundY - 500, t: 'plat_yellow'},
+      {x: 200, y: groundY - 450, t: 'plat_red'}
+    ];
 
-            levels.forEach(p => {
-                const plat = this.platforms.create(p.x, p.y, p.c);
-                plat.setDisplaySize(p.w, 40);
-                plat.refreshBody();
-            });
+    levels.forEach(p => {
+      const plat = this.platforms.create(p.x, p.y, p.t);
+      plat.refreshBody();
+    });
 
-            // --- 3. TRASH CAN ---
-            this.trashCan = this.physics.add.staticSprite(worldWidth - 200, worldHeight - 100, 'trashcan');
-            this.trashCan.setDisplaySize(100, 130);
-            this.trashCan.setDepth(5);
+    // 4. Trash Can
+    this.trashCan = this.physics.add.staticSprite(worldW - 150, groundY - 60, 'trashcan');
+    this.trashCan.setDepth(5);
 
-            // --- 4. ANIMATED PLAYER ---
-            this.player = this.physics.add.sprite(200, worldHeight - 200, 'player_idle');
-            this.player.setCollideWorldBounds(true);
-            this.player.setDepth(10);
-            this.player.setBounce(0.1);
-            this.player.setDisplaySize(70, 120); // Make character bigger
-            this.player.body.setSize(50, 110); // Adjust hitbox
+    // 5. Player
+    this.player = this.physics.add.sprite(100, groundY - 200, 'player_idle');
+    this.player.setCollideWorldBounds(true);
+    this.player.setBounce(0.1);
+    this.player.setDepth(10);
+    this.player.body.setSize(40, 90);
 
-            // --- 5. CAMERA (ZOOMED OUT) ---
-            this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
-            this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-            this.cameras.main.setZoom(0.5); // <--- ZOOM 0.5 AS REQUESTED
+    // 6. Camera (Perfect Zoom)
+    this.cameras.main.setBounds(0, 0, worldW, worldH);
+    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+    this.cameras.main.setZoom(0.65); // 0.65 is the sweet spot
 
-            // --- 6. BOTTLES ---
-            this.bottles = this.physics.add.group();
-            levels.forEach(p => {
-                const b = this.bottles.create(p.x, p.y - 70, 'bottle');
-                b.setDisplaySize(50, 60);
-                b.body.allowGravity = false;
-                this.tweens.add({ targets: b, y: b.y - 15, duration: 1500, yoyo: true, repeat: -1 });
-            });
+    // 7. Bottles
+    this.bottles = this.physics.add.group();
+    levels.forEach(p => {
+        const b = this.bottles.create(p.x, p.y - 60, 'bottle');
+        this.tweens.add({ targets: b, y: b.y - 10, duration: 1500, yoyo: true, repeat: -1 });
+    });
 
-            // --- 7. COLLISIONS & INPUTS ---
-            this.physics.add.collider(this.player, this.platforms);
-            this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
-            this.cursors = this.input.keyboard.createCursorKeys();
-            this.setupHtmlControls();
+    // 8. Collisions
+    this.physics.add.collider(this.player, this.platforms);
+    this.physics.add.collider(this.bottles, this.platforms);
+    this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
+    
+    // 9. Controls
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.setupTouchControls();
+  }
 
-            this.collected = 0;
-            this.deposited = 0;
-            this.updateScoreUI();
-
-            this.showPopup("LEVEL 1", "დონე : მარტივი\nშეაგროვე 6 ბოთლი და\n მოათავსე ნაგვის ურნაში.", "თამაშის დაწყება", () => {
-                this.gameActive = true;
-            });
-        }
-
-        update(time, delta) {
-            if (!this.gameActive) {
-                this.player.setVelocityX(0);
-                return;
-            }
-
-            const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
-            if (dist < 150 && this.collected > 0) { // Increased distance for easier deposit
-                this.depositBottles();
-            }
-
-            const speed = 500; // Faster speed for larger world
-            const jumpStrength = -1100; // Stronger jump
-            const movingLeft = this.cursors.left.isDown || this.inputs.left;
-            const movingRight = this.cursors.right.isDown || this.inputs.right;
-            const jumping = this.cursors.up.isDown || this.cursors.space.isDown || this.inputs.jump;
-            const onGround = this.player.body.touching.down;
-
-            if (movingLeft) {
-                this.player.setVelocityX(-speed);
-                this.player.setFlipX(true);
-            } else if (movingRight) {
-                this.player.setVelocityX(speed);
-                this.player.setFlipX(false);
-            } else {
-                this.player.setVelocityX(0);
-            }
-
-            if (jumping && onGround) {
-                this.player.setVelocityY(jumpStrength);
-            }
-
-            if ((movingLeft || movingRight) && onGround) {
-                this.walkAnimTime += delta;
-                if (this.walkAnimTime > 150) {
-                    this.walkFrame = this.walkFrame === 1 ? 2 : 1;
-                    this.player.setTexture(this.walkFrame === 1 ? 'player_walk1' : 'player_walk2');
-                    this.walkAnimTime = 0;
-                }
-            } else {
-                if (this.player.texture.key !== 'player_idle') {
-                    this.player.setTexture('player_idle');
-                }
-                this.walkAnimTime = 0;
-            }
-        }
-
-        collectBottle(player, bottle) {
-            bottle.destroy();
-            this.collected++;
-            this.updateScoreUI();
-        }
-
-        depositBottles() {
-            this.deposited += this.collected;
-            this.collected = 0;
-            this.updateScoreUI();
-            this.trashCan.setTint(0x00ff00);
-            this.time.delayedCall(200, () => this.trashCan.clearTint());
-            if (this.deposited >= this.totalBottles) {
-                this.gameActive = false;
-                this.time.delayedCall(500, () => {
-                    this.showPopup("ყოჩაღ!", "ბუნება გასუფთავდა!", "თავიდან", () => {
-                        this.scene.restart();
-                    });
-                });
-            }
-        }
-
-        updateScoreUI() {
-            const el = document.getElementById('score-display');
-            if(el) el.innerText = `ჩანთაში: ${this.collected} | სულ: ${this.deposited}`;
-        }
-
-        // --- RESTORED HIGH-QUALITY ANIMATED CHARACTER ---
-        createPlayerPoses() {
-            this.createPlayerTexture('player_idle', 0, 0, 0, 0);
-            this.createPlayerTexture('player_walk1', -6, 6, 6, -6);
-            this.createPlayerTexture('player_walk2', 6, -6, -6, 6);
-        }
-
-        createPlayerTexture(key, legL_off, legR_off, armL_off, armR_off) {
-            const g = this.make.graphics({ add: false });
-            const skin = 0xffccbc; const shirt = 0x1976d2; const pants = 0x0d47a1;
-            
-            // Legs
-            g.fillStyle(pants); g.fillRect(15, 60 + legL_off, 10, 25); g.fillRect(35, 60 + legR_off, 10, 25);
-            // Body
-            g.fillStyle(shirt); g.fillRoundedRect(10, 30, 40, 35, 5);
-            // Arms with Hands
-            g.fillStyle(shirt); 
-            g.fillRoundedRect(2, 30 + armR_off, 10, 22, 3); g.fillRoundedRect(48, 30 + legL_off, 10, 22, 3);
-            g.fillStyle(skin);
-            g.fillCircle(7, 54 + armR_off, 5); g.fillCircle(53, 54 + legL_off, 5);
-            // Head & Face
-            g.fillStyle(skin); g.fillCircle(30, 15, 15);
-            g.fillStyle(0x3e2723); g.fillCircle(30, 10, 16); // Hair
-            g.fillStyle(0xffffff); g.fillCircle(24, 15, 3); g.fillCircle(36, 15, 3); // Eyes
-            g.fillStyle(0x000000); g.fillCircle(24, 15, 1.5); g.fillCircle(36, 15, 1.5); // Pupils
-            g.beginPath(); g.lineStyle(2, 0x000000); g.arc(30, 20, 6, 0, Math.PI); g.strokePath(); // Smile
-
-            g.generateTexture(key, 60, 100); g.destroy();
-        }
-
-        makePlatformTextures() {
-            const colors = { plat_red: 0xe53935, plat_blue: 0x1e88e5, plat_yellow: 0xfdd835, plat_green: 0x43a047 };
-            Object.keys(colors).forEach(key => {
-                const g = this.make.graphics({ add: false });
-                g.fillStyle(colors[key]); g.fillRoundedRect(0, 0, 200, 40, 10);
-                g.lineStyle(3, 0xffffff); g.strokeRoundedRect(0, 0, 200, 40, 10);
-                g.generateTexture(key, 200, 40); g.destroy();
-            });
-        }
-
-        makeBottleTextures() {
-            const g = this.make.graphics({ add: false });
-            g.fillStyle(0x4fc3f7, 0.8); g.fillRoundedRect(10, 10, 30, 50, 8);
-            g.fillStyle(0x0277bd); g.fillRect(20, 0, 10, 10);
-            g.generateTexture('bottle', 50, 60); g.destroy();
-        }
-
-        makeTrashCanTexture() {
-            const g = this.make.graphics({ add: false });
-            g.fillStyle(0x424242); g.fillRoundedRect(10, 30, 80, 100, 5);
-            g.fillStyle(0x2e7d32); g.fillTriangle(50, 60, 30, 90, 70, 90);
-            g.fillStyle(0x616161); g.fillRoundedRect(5, 25, 90, 15, 3);
-            g.generateTexture('trashcan', 100, 130); g.destroy();
-        }
-
-        setupHtmlControls() {
-            const setupBtn = (id, key) => {
-                const btn = document.getElementById(id);
-                const start = (e) => { e.preventDefault(); this.inputs[key] = true; };
-                const end = (e) => { e.preventDefault(); this.inputs[key] = false; };
-                btn.addEventListener('mousedown', start); btn.addEventListener('mouseup', end);
-                btn.addEventListener('touchstart', start); btn.addEventListener('touchend', end);
-            };
-            setupBtn('btn-left', 'left'); setupBtn('btn-right', 'right'); setupBtn('btn-jump', 'jump');
-        }
-
-        showPopup(title, desc, btnText, callback) {
-            const overlay = document.getElementById('popup-overlay');
-            document.getElementById('popup-title').innerText = title;
-            document.getElementById('popup-desc').innerText = desc;
-            const b = document.getElementById('popup-btn');
-            b.innerText = btnText;
-            overlay.style.visibility = 'visible'; overlay.style.opacity = '1';
-            b.onclick = () => { overlay.style.visibility = 'hidden'; overlay.style.opacity = '0'; callback(); };
-        }
+  update(time, delta) {
+    // Deposit Logic
+    const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
+    if (dist < 100 && this.collected > 0) {
+        this.depositBottles();
     }
 
-    const config = {
-        type: Phaser.AUTO,
-        scale: { mode: Phaser.Scale.RESIZE, parent: 'game-container', width: '100%', height: '100%' },
-        physics: { default: 'arcade', arcade: { gravity: { y: 2000 }, debug: false } }, // Higher gravity for larger world
-        scene: GameScene,
-        backgroundColor: '#222'
-    };
+    // Movement
+    const speed = 400;
+    const jumpForce = -950;
+    const left = this.cursors.left.isDown || this.inputs.left;
+    const right = this.cursors.right.isDown || this.inputs.right;
+    const jump = this.cursors.up.isDown || this.inputs.jump;
+    const onGround = this.player.body.touching.down;
 
-    new Phaser.Game(config);
-    </script>
+    if (left) {
+        this.player.setVelocityX(-speed);
+        this.player.setFlipX(true);
+        this.animateWalk(delta);
+    } else if (right) {
+        this.player.setVelocityX(speed);
+        this.player.setFlipX(false);
+        this.animateWalk(delta);
+    } else {
+        this.player.setVelocityX(0);
+        this.player.setTexture('player_idle');
+        this.walkTimer = 0;
+    }
+
+    if (jump && onGround) {
+        this.player.setVelocityY(jumpForce);
+    }
+  }
+
+  animateWalk(delta) {
+    if (!this.player.body.touching.down) {
+        this.player.setTexture('player_walk2'); // Jump pose
+        return;
+    }
+    this.walkTimer += delta;
+    if (this.walkTimer > 150) {
+        const cur = this.player.texture.key;
+        this.player.setTexture(cur === 'player_walk1' ? 'player_walk2' : 'player_walk1');
+        this.walkTimer = 0;
+    }
+  }
+
+  collectBottle(player, bottle) {
+    bottle.destroy();
+    this.collected++;
+    this.updateUI();
+  }
+
+  depositBottles() {
+    this.deposited += this.collected;
+    this.collected = 0;
+    this.updateUI();
+    this.trashCan.setTint(0x00ff00);
+    this.time.delayedCall(200, () => this.trashCan.clearTint());
+    
+    if (this.deposited >= this.totalBottles) {
+        this.time.delayedCall(500, () => {
+            const ol = document.getElementById('popup-overlay');
+            ol.style.visibility = 'visible'; ol.style.opacity = '1';
+        });
+    }
+  }
+
+  updateUI() {
+    document.getElementById('score-display').innerText = `Bag: ${this.collected} | Total: ${this.deposited}`;
+  }
+
+  setupTouchControls() {
+    const bind = (id, key) => {
+        const btn = document.getElementById(id);
+        const on = (e) => { e.preventDefault(); this.inputs[key] = true; };
+        const off = (e) => { e.preventDefault(); this.inputs[key] = false; };
+        btn.addEventListener('mousedown', on); btn.addEventListener('mouseup', off);
+        btn.addEventListener('touchstart', on); btn.addEventListener('touchend', off);
+    };
+    bind('btn-left', 'left'); bind('btn-right', 'right'); bind('btn-jump', 'jump');
+  }
+
+  // --- TEXTURE GENERATORS (Draws the "Beautiful" Character) ---
+  createPlayerPoses() {
+    const draw = (key, legL, legR, armL, armR) => {
+        const g = this.make.graphics({add:false});
+        // Legs
+        g.fillStyle(0x1565c0); // Dark blue pants
+        g.fillRect(15, 60+legL, 10, 25); g.fillRect(35, 60+legR, 10, 25);
+        // Body
+        g.fillStyle(0x2196f3); // Blue shirt
+        g.fillRoundedRect(10, 30, 40, 35, 5);
+        // Arms (With Sleeves)
+        g.fillStyle(0x2196f3);
+        g.fillRoundedRect(2, 30+armR, 10, 20, 3); // L
+        g.fillRoundedRect(48, 30+legL, 10, 20, 3); // R
+        // Hands (Skin color)
+        g.fillStyle(0xffccbc); 
+        g.fillCircle(7, 53+armR, 5); g.fillCircle(53, 53+legL, 5);
+        // Head
+        g.fillStyle(0xffccbc); g.fillCircle(30, 15, 14);
+        // Hair
+        g.fillStyle(0x3e2723); g.fillCircle(30, 10, 15);
+        // Face
+        g.fillStyle(0x000000); g.fillCircle(25, 15, 2); g.fillCircle(35, 15, 2); // Eyes
+        g.beginPath(); g.lineStyle(2,0x000000); g.arc(30,20,5,0,Math.PI); g.strokePath(); // Smile
+        
+        g.generateTexture(key, 60, 90); g.destroy();
+    };
+    draw('player_idle', 0,0,0,0);
+    draw('player_walk1', -5, 5, 5, -5);
+    draw('player_walk2', 5, -5, -5, 5);
+  }
+
+  createPlatformTextures() {
+    const colors = { plat_red: 0xe53935, plat_blue: 0x1e88e5, plat_yellow: 0xfdd835, plat_green: 0x43a047 };
+    for (const [key, val] of Object.entries(colors)) {
+        const g = this.make.graphics({add:false});
+        g.fillStyle(val); g.fillRoundedRect(0,0,140,30,8);
+        g.lineStyle(2,0xffffff); g.strokeRoundedRect(0,0,140,30,8);
+        g.generateTexture(key, 140, 30); g.destroy();
+    }
+  }
+
+  createItemTextures() {
+    // Bottle
+    let g = this.make.graphics({add:false});
+    g.fillStyle(0x81d4fa, 0.8); g.fillRoundedRect(10,10,20,30,5);
+    g.fillStyle(0x4e342e); g.fillRect(15,2,10,8);
+    g.generateTexture('bottle', 40, 45); g.destroy();
+    // Trash Can
+    g = this.make.graphics({add:false});
+    g.fillStyle(0x424242); g.fillRoundedRect(5,20,60,70,5);
+    g.fillStyle(0x66bb6a); g.fillTriangle(35,40,20,65,50,65);
+    g.generateTexture('trashcan', 70, 95); g.destroy();
+  }
+
+  createEnvironmentTextures() {
+      // Simple Cloud
+      const g = this.make.graphics({add:false});
+      g.fillStyle(0xffffff);
+      g.fillCircle(20, 20, 20); g.fillCircle(40, 20, 25); g.fillCircle(60, 20, 20);
+      g.generateTexture('cloud', 100, 50); g.destroy();
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  scale: { mode: Phaser.Scale.RESIZE, parent: 'game-container', width: '100%', height: '100%' },
+  physics: { default: 'arcade', arcade: { gravity: { y: 1600 }, debug: false } },
+  scene: GameScene,
+  backgroundColor: '#87CEEB'
+};
+
+new Phaser.Game(config);
+</script>
 </body>
 </html>
