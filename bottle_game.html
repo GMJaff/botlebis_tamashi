@@ -3,118 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Poti Game - HD</title>
+  <title>Poti Game - HD Animation</title>
   <style>
     /* 1. RESET & FULL SCREEN SETUP */
     html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #222;
-      overflow: hidden;
-      touch-action: none; /* Critical for mobile games */
-      font-family: 'Arial', sans-serif;
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      background-color: #222; overflow: hidden;
+      touch-action: none; font-family: 'Arial', sans-serif;
     }
 
     /* 2. GAME CANVAS */
-    #game-container {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
+    #game-container { width: 100%; height: 100%; display: block; }
 
-    /* 3. UI OVERLAY (Score & Banner) */
+    /* 3. UI OVERLAY */
     #ui-layer {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      padding: 10px;
-      pointer-events: none; /* Let clicks pass through to game */
-      z-index: 10;
-      display: flex;
-      justify-content: space-between;
+      position: fixed; top: 0; left: 0; right: 0; padding: 10px;
+      pointer-events: none; z-index: 10;
+      display: flex; justify-content: space-between;
       text-shadow: 2px 2px 2px #000;
     }
     .hud-text {
-      color: white;
-      font-weight: bold;
-      font-size: 18px;
-      background: rgba(0,0,0,0.3);
-      padding: 5px 10px;
-      border-radius: 8px;
+      color: white; font-weight: bold; font-size: 18px;
+      background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 8px;
     }
 
-    /* 4. MOBILE CONTROLS (HTML Buttons are smoother than Phaser buttons) */
+    /* 4. MOBILE CONTROLS */
     .controls {
-      position: fixed;
-      bottom: 20px;
-      width: 100%;
-      height: 80px;
-      z-index: 20;
-      display: flex;
-      justify-content: space-between;
-      padding: 0 20px;
-      box-sizing: border-box;
-      pointer-events: none; /* Allow touching game behind buttons */
+      position: fixed; bottom: 20px; width: 100%; height: 80px; z-index: 20;
+      display: flex; justify-content: space-between; padding: 0 20px;
+      box-sizing: border-box; pointer-events: none;
     }
-
-    .btn-group {
-      display: flex;
-      gap: 15px;
-      pointer-events: auto; /* Re-enable touch for buttons */
-    }
-
+    .btn-group { display: flex; gap: 15px; pointer-events: auto; }
     .control-btn {
-      width: 70px;
-      height: 70px;
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.5);
-      border-radius: 50%;
-      color: white;
-      font-size: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: none;
+      width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%;
+      color: white; font-size: 30px; display: flex; align-items: center; justify-content: center;
+      user-select: none; -webkit-tap-highlight-color: transparent;
     }
-    
-    .control-btn:active {
-      background: rgba(67, 160, 71, 0.8);
-      transform: scale(0.95);
-    }
-
-    .jump-btn {
-      background: rgba(255, 107, 53, 0.4);
-    }
-    .jump-btn:active {
-      background: rgba(255, 107, 53, 0.9);
-    }
+    .control-btn:active { background: rgba(67, 160, 71, 0.8); transform: scale(0.95); }
+    .jump-btn { background: rgba(255, 107, 53, 0.4); }
+    .jump-btn:active { background: rgba(255, 107, 53, 0.9); }
 
     /* 5. POPUP STYLE */
     #popup-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      display: flex; justify-content: center; align-items: center;
-      z-index: 100;
-      visibility: hidden; opacity: 0;
-      transition: opacity 0.3s;
+      background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center;
+      z-index: 100; visibility: hidden; opacity: 0; transition: opacity 0.3s;
     }
     #popup-box {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      border-top: 5px solid #43a047;
-      text-align: center;
-      max-width: 90%;
-      width: 400px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      background: white; padding: 20px; border-radius: 12px;
+      border-top: 5px solid #43a047; text-align: center;
+      max-width: 90%; width: 400px;
     }
     .popup-btn {
-      background: #43a047; color: white; border: none;
-      padding: 12px 24px; font-size: 18px; border-radius: 6px;
-      margin-top: 15px; cursor: pointer;
+      background: #43a047; color: white; border: none; padding: 12px 24px;
+      font-size: 18px; border-radius: 6px; margin-top: 15px; cursor: pointer;
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
@@ -152,47 +95,44 @@ class GameScene extends Phaser.Scene {
     super('GameScene');
     this.totalBottles = 6;
     this.gameActive = false;
-    
-    // Control States
     this.inputs = { left: false, right: false, jump: false };
+    
+    // Animation Timer
+    this.walkTimer = 0;
   }
 
   preload() {
-    // 1. Generate textures programmatically (Keeping your high-quality assets)
     this.generateTextures();
   }
 
   create() {
     // --- 1. WORLD SETUP ---
-    // The world is wider (1600px) than the screen, so the camera can move
-    const worldWidth = 1600;
-    const worldHeight = 800; // slightly taller to prevent falling out easily
+    const worldWidth = 2000; // Even wider for better scrolling
+    const worldHeight = 1000;
     this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
 
     // --- 2. BACKGROUND ---
-    // Create a large background that covers the whole world
-    const bg = this.add.rectangle(worldWidth/2, worldHeight/2, worldWidth, worldHeight, 0x87CEEB);
-    
-    // Add some clouds/sun for decoration (simple graphics)
+    this.add.rectangle(worldWidth/2, worldHeight/2, worldWidth, worldHeight, 0x87CEEB);
     this.createScenery(worldWidth);
 
     // --- 3. PLATFORMS ---
     this.platforms = this.physics.add.staticGroup();
     
-    // Floor (Green grass)
-    const floor = this.add.rectangle(worldWidth/2, worldHeight - 20, worldWidth, 40, 0x2e7d32);
-    this.physics.add.existing(floor, true); // true = static
+    // Floor
+    const floor = this.add.rectangle(worldWidth/2, worldHeight - 20, worldWidth, 60, 0x2e7d32);
+    this.physics.add.existing(floor, true);
     this.platforms.add(floor);
+    // Dirt under grass
+    this.add.rectangle(worldWidth/2, worldHeight + 30, worldWidth, 100, 0x4e342e);
 
-    // Platform Layout (Spread out over the wider 1600px world)
     const levels = [
-      {x: 300, y: 600, w: 150, c: 'plat_red'},
-      {x: 600, y: 500, w: 150, c: 'plat_blue'},
-      {x: 900, y: 550, w: 150, c: 'plat_yellow'},
-      {x: 450, y: 350, w: 150, c: 'plat_green'},
-      {x: 800, y: 250, w: 150, c: 'plat_red'},
-      {x: 1200, y: 450, w: 150, c: 'plat_blue'},
-      {x: 1400, y: 300, w: 130, c: 'plat_yellow'}
+      {x: 300, y: 750, w: 160, c: 'plat_red'},
+      {x: 600, y: 650, w: 160, c: 'plat_blue'},
+      {x: 950, y: 700, w: 160, c: 'plat_yellow'},
+      {x: 500, y: 500, w: 160, c: 'plat_green'},
+      {x: 850, y: 400, w: 160, c: 'plat_red'},
+      {x: 1300, y: 600, w: 160, c: 'plat_blue'},
+      {x: 1600, y: 450, w: 140, c: 'plat_yellow'}
     ];
 
     levels.forEach(p => {
@@ -202,33 +142,29 @@ class GameScene extends Phaser.Scene {
     });
 
     // --- 4. TRASH CAN ---
-    // Located at the far end of the level
-    this.trashCan = this.physics.add.staticSprite(worldWidth - 100, worldHeight - 80, 'trashcan');
-    this.trashCan.setDisplaySize(70, 90);
+    this.trashCan = this.physics.add.staticSprite(worldWidth - 150, worldHeight - 110, 'trashcan');
     this.trashCan.setDepth(5);
 
     // --- 5. PLAYER ---
-    this.player = this.physics.add.sprite(100, worldHeight - 150, 'player');
+    // Start with Idle texture
+    this.player = this.physics.add.sprite(100, worldHeight - 150, 'player_idle');
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(10);
     this.player.setBounce(0.1);
+    this.player.body.setSize(40, 90); // Adjust hitbox to fit body
 
-    // --- 6. CAMERA ---
-    // The magic part: Camera follows player
+    // --- 6. CAMERA (ZOOMED OUT) ---
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setZoom(1.1); // Slight zoom to see details better
+    // ! IMPORTANT: ZOOMED OUT HERE !
+    this.cameras.main.setZoom(0.75); 
 
     // --- 7. BOTTLES ---
     this.bottles = this.physics.add.group();
     levels.forEach(p => {
-        // Place bottle on top of platform
-        const b = this.bottles.create(p.x, p.y - 50, 'glass');
+        const b = this.bottles.create(p.x, p.y - 60, 'glass');
         b.body.allowGravity = false;
-        // Float animation
-        this.tweens.add({
-            targets: b, y: b.y - 10, duration: 1500, yoyo: true, repeat: -1
-        });
+        this.tweens.add({ targets: b, y: b.y - 10, duration: 1500, yoyo: true, repeat: -1 });
     });
 
     // --- 8. COLLISIONS ---
@@ -237,50 +173,70 @@ class GameScene extends Phaser.Scene {
 
     // --- 9. INPUTS ---
     this.cursors = this.input.keyboard.createCursorKeys();
-    this.setupHtmlControls(); // Connect HTML buttons to Phaser
+    this.setupHtmlControls();
 
-    // Game Logic Variables
     this.collected = 0;
     this.deposited = 0;
     this.updateScoreUI();
 
-    // Start Popup
     this.showPopup("LEVEL 1", "დონე : მარტივი\nშეაგროვე 6 ბოთლი და\n მოათავსე ნაგვის ურნაში.", "თამაშის დაწყება", () => {
       this.gameActive = true;
     });
   }
 
-  update() {
+  update(time, delta) {
     if (!this.gameActive) {
         this.player.setVelocityX(0);
-        this.player.anims.stop();
         return;
     }
 
-    // Logic for depositing logic (Distance check)
+    // Trash Logic
     const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
-    if (dist < 100 && this.collected > 0) {
-        this.depositBottles();
-    }
+    if (dist < 100 && this.collected > 0) this.depositBottles();
 
     // Movement
-    const speed = 350;
-    const jumpStrength = -780;
+    const speed = 360;
+    const jumpStrength = -900;
+    const left = this.cursors.left.isDown || this.inputs.left;
+    const right = this.cursors.right.isDown || this.inputs.right;
+    const jump = (this.cursors.up.isDown || this.cursors.space.isDown || this.inputs.jump);
 
-    // Check Input (Keyboard OR Touch)
-    if (this.cursors.left.isDown || this.inputs.left) {
+    if (left) {
         this.player.setVelocityX(-speed);
-        this.player.setFlipX(true); // Flip texture
-    } else if (this.cursors.right.isDown || this.inputs.right) {
+        this.player.setFlipX(true);
+        this.animatePlayer(delta); // Run animation
+    } else if (right) {
         this.player.setVelocityX(speed);
         this.player.setFlipX(false);
+        this.animatePlayer(delta); // Run animation
     } else {
         this.player.setVelocityX(0);
+        this.player.setTexture('player_idle'); // Stop animation
+        this.walkTimer = 0;
     }
 
-    // Jump (Only if touching ground)
-    if ((this.cursors.up.isDown || this.cursors.space.isDown || this.inputs.jump) && this.player.body.touching.down) {
+    if (jump && this.player.body.touching.down) {
         this.player.setVelocityY(jumpStrength);
+    }
+    
+    // If in air, use jump pose (re-use walk 2)
+    if (!this.player.body.touching.down) {
+       this.player.setTexture('player_walk2');
+    }
+  }
+
+  // --- ANIMATION LOGIC ---
+  animatePlayer(delta) {
+    this.walkTimer += delta;
+    // Switch texture every 150ms
+    if (this.walkTimer > 150) {
+        const current = this.player.texture.key;
+        if (current === 'player_walk1') {
+            this.player.setTexture('player_walk2');
+        } else {
+            this.player.setTexture('player_walk1');
+        }
+        this.walkTimer = 0;
     }
   }
 
@@ -294,17 +250,13 @@ class GameScene extends Phaser.Scene {
     this.deposited += this.collected;
     this.collected = 0;
     this.updateScoreUI();
-    
-    // Visual feedback
     this.trashCan.setTint(0x00ff00);
     this.time.delayedCall(200, () => this.trashCan.clearTint());
 
     if (this.deposited >= this.totalBottles) {
         this.gameActive = false;
         this.time.delayedCall(500, () => {
-            this.showPopup("ყოჩაღ!", "ბუნება გასუფთავდა!", "თავიდან", () => {
-                this.scene.restart();
-            });
+            this.showPopup("ყოჩაღ!", "ბუნება გასუფთავდა!", "თავიდან", () => this.scene.restart());
         });
     }
   }
@@ -314,117 +266,142 @@ class GameScene extends Phaser.Scene {
     if(el) el.innerText = `ჩანთაში: ${this.collected} | შეგროვებული: ${this.deposited}`;
   }
 
-  // --- TEXTURE GENERATION (From your Code 1) ---
+  // --- GENERATE GRAPHICS (Character & Props) ---
   generateTextures() {
-    this.makeBetterPlayer();
+    // 1. Idle Pose
+    this.createCharacterTexture('player_idle', 0);
+    // 2. Walk Pose 1 (Left Leg Forward)
+    this.createCharacterTexture('player_walk1', -1);
+    // 3. Walk Pose 2 (Right Leg Forward)
+    this.createCharacterTexture('player_walk2', 1);
+
     this.makeBottleTextures();
     this.makeTrashCanTexture();
     this.makePlatformTextures();
   }
 
-  makeBetterPlayer() {
+  createCharacterTexture(name, step) {
+    // step: 0 = idle, -1 = left fwd, 1 = right fwd
     const g = this.make.graphics({ add: false });
-    // Detailed Player
-    g.fillStyle(0x0d47a1, 1); g.fillRect(15, 65, 8, 18); g.fillRect(27, 65, 8, 18); // Legs
-    g.fillStyle(0x1976d2, 1); g.fillRoundedRect(12, 32, 26, 32, 5); // Body
-    g.fillStyle(0xffccbc, 1); g.fillCircle(25, 16, 13); // Head
-    g.fillStyle(0x3e2723, 1); g.fillEllipse(25, 8, 20, 12); // Hair
-    g.fillStyle(0xffffff, 1); g.fillCircle(21, 15, 3.5); g.fillCircle(29, 15, 3.5); // Eyes
-    g.fillStyle(0x000000, 1); g.fillCircle(21, 15, 2); g.fillCircle(29, 15, 2); // Pupils
-    g.lineStyle(2, 0x000000); g.beginPath(); g.arc(25, 21, 7, 0, Math.PI); g.strokePath(); // Smile
-    g.generateTexture('player', 50, 90);
+    
+    // Colors
+    const skin = 0xffccbc;
+    const shirt = 0x1565c0;
+    const pants = 0x0d47a1;
+    const shoes = 0x333333;
+
+    // Offsets for animation
+    const legL = (step === -1) ? 5 : (step === 1 ? -5 : 0);
+    const legR = (step === 1) ? 5 : (step === -1 ? -5 : 0);
+    
+    // Legs
+    g.fillStyle(pants); 
+    g.fillRect(15, 60, 10, 25 + legL); // Left Leg
+    g.fillRect(35, 60, 10, 25 + legR); // Right Leg
+    // Shoes
+    g.fillStyle(shoes);
+    g.fillRect(13, 85 + legL, 14, 5);
+    g.fillRect(33, 85 + legR, 14, 5);
+
+    // Body
+    g.fillStyle(shirt);
+    g.fillRoundedRect(10, 30, 40, 35, 5);
+
+    // Arms & Hands (Animated opposite to legs)
+    g.fillStyle(shirt);
+    // Left Arm
+    const armL_Y = (step === -1) ? -3 : (step === 1 ? 3 : 0);
+    g.fillRect(5, 30 + armL_Y, 8, 20); 
+    // Right Arm
+    const armR_Y = (step === 1) ? -3 : (step === -1 ? 3 : 0);
+    g.fillRect(47, 30 + armR_Y, 8, 20);
+
+    // Hands
+    g.fillStyle(skin);
+    g.fillCircle(9, 53 + armL_Y, 5); // L Hand
+    g.fillCircle(51, 53 + armR_Y, 5); // R Hand
+
+    // Head
+    g.fillStyle(skin);
+    g.fillCircle(30, 15, 14);
+    
+    // Hair
+    g.fillStyle(0x3e2723);
+    g.fillCircle(30, 10, 15);
+
+    // Face
+    g.fillStyle(0x000000);
+    g.fillCircle(24, 15, 2); // Eye L
+    g.fillCircle(36, 15, 2); // Eye R
+    g.beginPath(); g.lineStyle(2, 0x000000); g.arc(30, 18, 6, 0.2, 2.94); g.strokePath(); // Smile
+
+    g.generateTexture(name, 60, 100);
     g.destroy();
   }
 
   makePlatformTextures() {
-    const colors = { plat_red: 0xff4747, plat_blue: 0x47a3ff, plat_green: 0x47ff78, plat_yellow: 0xffd947 };
+    const colors = { plat_red: 0xe53935, plat_blue: 0x1e88e5, plat_green: 0x43a047, plat_yellow: 0xfdd835 };
     Object.keys(colors).forEach(key => {
       const g = this.make.graphics({ add: false });
-      g.fillStyle(colors[key]); g.fillRoundedRect(0, 0, 100, 30, 8);
-      g.lineStyle(2, 0x333333); g.strokeRoundedRect(0, 0, 100, 30, 8);
-      g.generateTexture(key, 100, 30); g.destroy();
+      g.fillStyle(colors[key]); g.fillRoundedRect(0, 0, 160, 30, 10);
+      g.lineStyle(2, 0xffffff); g.strokeRoundedRect(0, 0, 160, 30, 10);
+      g.generateTexture(key, 160, 30); g.destroy();
     });
   }
 
   makeBottleTextures() {
     const g = this.make.graphics({ add: false });
-    g.fillStyle(0xb3e5fc, 0.8); g.fillRoundedRect(4, 10, 22, 40, 6);
-    g.fillStyle(0x8d6e63, 1); g.fillRect(10, -4, 10, 4);
-    g.generateTexture('glass', 30, 50); g.destroy();
+    g.fillStyle(0x4fc3f7, 0.7); g.fillRect(10, 10, 20, 30); // Body
+    g.fillStyle(0xffffff, 0.4); g.fillRect(12, 12, 5, 25); // Shine
+    g.fillStyle(0x5d4037, 1); g.fillRect(15, 0, 10, 10); // Cork
+    g.generateTexture('glass', 40, 40); g.destroy();
   }
 
   makeTrashCanTexture() {
     const g = this.make.graphics({ add: false });
-    g.fillStyle(0x424242, 1); g.fillRoundedRect(8, 20, 44, 55, 4);
-    g.fillStyle(0x43a047, 1); g.fillTriangle(30, 35, 25, 45, 35, 45); // Recycle logo
-    g.fillStyle(0x616161, 1); g.fillRoundedRect(5, 18, 50, 8, 3);
-    g.generateTexture('trashcan', 60, 80); g.destroy();
+    g.fillStyle(0x616161, 1); g.fillRoundedRect(0, 15, 60, 80, 5);
+    g.fillStyle(0x2e7d32, 1); g.fillTriangle(30, 35, 20, 55, 40, 55); // Recycle
+    g.fillStyle(0x212121, 1); g.fillRect(5, 5, 50, 10); // Lid
+    g.generateTexture('trashcan', 60, 100); g.destroy();
   }
 
   createScenery(w) {
-      // Add a Sun
-      this.add.circle(w - 200, 100, 60, 0xffeb3b).setScrollFactor(0.1);
-      // Add Clouds (using simple graphics)
-      for(let i=0; i<10; i++) {
+      this.add.circle(w - 200, 100, 70, 0xffeb3b, 0.8).setScrollFactor(0.1); // Sun
+      for(let i=0; i<12; i++) {
           const x = Phaser.Math.Between(0, w);
-          const y = Phaser.Math.Between(50, 300);
-          const cloud = this.add.circle(x, y, 40, 0xffffff, 0.7);
-          cloud.setScrollFactor(0.2); // Parallax effect
+          const y = Phaser.Math.Between(50, 400);
+          const s = Phaser.Math.FloatBetween(0.5, 1.2);
+          const cloud = this.add.ellipse(x, y, 100 * s, 60 * s, 0xffffff, 0.8);
+          cloud.setScrollFactor(0.2); 
       }
   }
 
-  // --- HTML UI HELPERS ---
   setupHtmlControls() {
     const setupBtn = (id, key) => {
         const btn = document.getElementById(id);
         const start = (e) => { e.preventDefault(); this.inputs[key] = true; };
         const end = (e) => { e.preventDefault(); this.inputs[key] = false; };
-        
-        btn.addEventListener('mousedown', start);
-        btn.addEventListener('mouseup', end);
-        btn.addEventListener('touchstart', start);
-        btn.addEventListener('touchend', end);
+        btn.addEventListener('mousedown', start); btn.addEventListener('mouseup', end);
+        btn.addEventListener('touchstart', start); btn.addEventListener('touchend', end);
     };
-
-    setupBtn('btn-left', 'left');
-    setupBtn('btn-right', 'right');
-    setupBtn('btn-jump', 'jump');
+    setupBtn('btn-left', 'left'); setupBtn('btn-right', 'right'); setupBtn('btn-jump', 'jump');
   }
 
   showPopup(title, desc, btnText, callback) {
     const overlay = document.getElementById('popup-overlay');
-    const t = document.getElementById('popup-title');
-    const d = document.getElementById('popup-desc');
+    document.getElementById('popup-title').innerText = title;
+    document.getElementById('popup-desc').innerText = desc;
     const b = document.getElementById('popup-btn');
-
-    t.innerText = title;
-    d.innerText = desc;
     b.innerText = btnText;
-
-    overlay.style.visibility = 'visible';
-    overlay.style.opacity = '1';
-
-    b.onclick = () => {
-        overlay.style.visibility = 'hidden';
-        overlay.style.opacity = '0';
-        callback();
-    };
+    overlay.style.visibility = 'visible'; overlay.style.opacity = '1';
+    b.onclick = () => { overlay.style.visibility = 'hidden'; overlay.style.opacity = '0'; callback(); };
   }
 }
 
-// CONFIGURATION
 const config = {
   type: Phaser.AUTO,
-  scale: {
-    mode: Phaser.Scale.RESIZE, // Resizes to fit screen exactly (crisp!)
-    parent: 'game-container',
-    width: '100%',
-    height: '100%'
-  },
-  physics: { 
-    default: 'arcade', 
-    arcade: { gravity: { y: 1500 }, debug: false } 
-  },
+  scale: { mode: Phaser.Scale.RESIZE, parent: 'game-container', width: '100%', height: '100%' },
+  physics: { default: 'arcade', arcade: { gravity: { y: 1600 }, debug: false } },
   scene: GameScene,
   backgroundColor: '#87CEEB'
 };
