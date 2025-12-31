@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Poti Game - Solid Ground</title>
+  <title>Poti Game - Custom Background</title>
   <style>
-    body { margin: 0; padding: 0; background-color: #222; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
+    body { margin: 0; padding: 0; background-color: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
     
     /* UI Layer */
     #ui-layer {
@@ -91,48 +91,41 @@ class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // Generate all graphics in code so nothing is missing
+    // --- LOAD YOUR BACKGROUND HERE ---
+    // Make sure the file is named 'background.png' and is in the same folder
+    this.load.image('custom_bg', 'background.png'); 
+
+    // Generate other graphics
     this.createPlayerPoses();
     this.createPlatformTextures();
     this.createItemTextures();
-    this.createEnvironmentTextures(); // Clouds and trees
   }
 
   create() {
-    // 1. Setup World
-    // We make the world 1600x1200
+    // 1. Setup World Size (1600x1200)
     const worldW = 1600;
     const worldH = 1200; 
     this.physics.world.setBounds(0, 0, worldW, worldH);
     
-    // Background Color (Nice Sky Blue)
-    this.cameras.main.setBackgroundColor('#87CEEB');
+    // --- ADD BACKGROUND IMAGE ---
+    // We add this FIRST so it is behind everything else
+    // We stretch it (setDisplaySize) to fill the whole world
+    const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
+    bg.setDisplaySize(worldW, worldH);
 
-    // Add some clouds for decoration
-    this.add.image(200, 200, 'cloud').setAlpha(0.8);
-    this.add.image(800, 150, 'cloud').setAlpha(0.6);
-    this.add.image(1300, 250, 'cloud').setAlpha(0.8);
-
-    // 2. THE GROUND (Fixed to not look like it's floating)
+    // 2. Platforms
     this.platforms = this.physics.add.staticGroup();
     
-    // The visual "Dirt" block - Extends WAY down so you never see the bottom edge
-    // Positioning it at the bottom center of the world
-    this.add.rectangle(worldW/2, worldH, worldW, 400, 0x5d4037).setOrigin(0.5, 1); 
-    
-    // The Physics "Grass" surface on top of the dirt
-    // Placed at y = worldH - 380 (So it sits on top of the visual dirt)
-    const groundY = worldH - 100;
-    
-    // Draw visual dirt filling the space below the ground line
-    this.add.rectangle(worldW/2, worldH + 200, worldW, 600, 0x5d4037);
-
-    // The actual physics ground
-    const ground = this.add.rectangle(worldW/2, groundY, worldW, 60, 0x4caf50); 
+    // Invisible Ground Line
+    // I made this transparent (alpha = 0) so you see the background's ground,
+    // but the player still walks on this physics line.
+    const groundY = worldH - 60; // Adjust this number if your character is floating too high/low
+    const ground = this.add.rectangle(worldW/2, groundY, worldW, 60, 0x000000); 
+    ground.setAlpha(0); // Make invisible so we see the background image
     this.physics.add.existing(ground, true);
     this.platforms.add(ground);
 
-    // 3. Platforms (Floating)
+    // 3. Floating Platforms
     const levels = [
       {x: 300, y: groundY - 150, t: 'plat_red'},
       {x: 600, y: groundY - 250, t: 'plat_blue'},
@@ -149,7 +142,7 @@ class GameScene extends Phaser.Scene {
     });
 
     // 4. Trash Can
-    this.trashCan = this.physics.add.staticSprite(worldW - 150, groundY - 60, 'trashcan');
+    this.trashCan = this.physics.add.staticSprite(worldW - 150, groundY - 80, 'trashcan');
     this.trashCan.setDepth(5);
 
     // 5. Player
@@ -159,10 +152,10 @@ class GameScene extends Phaser.Scene {
     this.player.setDepth(10);
     this.player.body.setSize(40, 90);
 
-    // 6. Camera (Perfect Zoom)
+    // 6. Camera (Zoomed to 0.65)
     this.cameras.main.setBounds(0, 0, worldW, worldH);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setZoom(0.65); // 0.65 is the sweet spot
+    this.cameras.main.setZoom(0.65);
 
     // 7. Bottles
     this.bottles = this.physics.add.group();
@@ -182,13 +175,11 @@ class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    // Deposit Logic
     const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
     if (dist < 100 && this.collected > 0) {
         this.depositBottles();
     }
 
-    // Movement
     const speed = 400;
     const jumpForce = -950;
     const left = this.cursors.left.isDown || this.inputs.left;
@@ -217,7 +208,7 @@ class GameScene extends Phaser.Scene {
 
   animateWalk(delta) {
     if (!this.player.body.touching.down) {
-        this.player.setTexture('player_walk2'); // Jump pose
+        this.player.setTexture('player_walk2'); 
         return;
     }
     this.walkTimer += delta;
@@ -264,31 +255,18 @@ class GameScene extends Phaser.Scene {
     bind('btn-left', 'left'); bind('btn-right', 'right'); bind('btn-jump', 'jump');
   }
 
-  // --- TEXTURE GENERATORS (Draws the "Beautiful" Character) ---
+  // --- CHARACTER & ITEM GENERATORS ---
   createPlayerPoses() {
     const draw = (key, legL, legR, armL, armR) => {
         const g = this.make.graphics({add:false});
-        // Legs
-        g.fillStyle(0x1565c0); // Dark blue pants
-        g.fillRect(15, 60+legL, 10, 25); g.fillRect(35, 60+legR, 10, 25);
-        // Body
-        g.fillStyle(0x2196f3); // Blue shirt
-        g.fillRoundedRect(10, 30, 40, 35, 5);
-        // Arms (With Sleeves)
-        g.fillStyle(0x2196f3);
-        g.fillRoundedRect(2, 30+armR, 10, 20, 3); // L
-        g.fillRoundedRect(48, 30+legL, 10, 20, 3); // R
-        // Hands (Skin color)
-        g.fillStyle(0xffccbc); 
-        g.fillCircle(7, 53+armR, 5); g.fillCircle(53, 53+legL, 5);
-        // Head
+        g.fillStyle(0x1565c0); g.fillRect(15, 60+legL, 10, 25); g.fillRect(35, 60+legR, 10, 25);
+        g.fillStyle(0x2196f3); g.fillRoundedRect(10, 30, 40, 35, 5);
+        g.fillStyle(0x2196f3); g.fillRoundedRect(2, 30+armR, 10, 20, 3); g.fillRoundedRect(48, 30+legL, 10, 20, 3);
+        g.fillStyle(0xffccbc); g.fillCircle(7, 53+armR, 5); g.fillCircle(53, 53+legL, 5);
         g.fillStyle(0xffccbc); g.fillCircle(30, 15, 14);
-        // Hair
         g.fillStyle(0x3e2723); g.fillCircle(30, 10, 15);
-        // Face
-        g.fillStyle(0x000000); g.fillCircle(25, 15, 2); g.fillCircle(35, 15, 2); // Eyes
-        g.beginPath(); g.lineStyle(2,0x000000); g.arc(30,20,5,0,Math.PI); g.strokePath(); // Smile
-        
+        g.fillStyle(0x000000); g.fillCircle(25, 15, 2); g.fillCircle(35, 15, 2); 
+        g.beginPath(); g.lineStyle(2,0x000000); g.arc(30,20,5,0,Math.PI); g.strokePath(); 
         g.generateTexture(key, 60, 90); g.destroy();
     };
     draw('player_idle', 0,0,0,0);
@@ -307,24 +285,14 @@ class GameScene extends Phaser.Scene {
   }
 
   createItemTextures() {
-    // Bottle
     let g = this.make.graphics({add:false});
     g.fillStyle(0x81d4fa, 0.8); g.fillRoundedRect(10,10,20,30,5);
     g.fillStyle(0x4e342e); g.fillRect(15,2,10,8);
     g.generateTexture('bottle', 40, 45); g.destroy();
-    // Trash Can
     g = this.make.graphics({add:false});
     g.fillStyle(0x424242); g.fillRoundedRect(5,20,60,70,5);
     g.fillStyle(0x66bb6a); g.fillTriangle(35,40,20,65,50,65);
     g.generateTexture('trashcan', 70, 95); g.destroy();
-  }
-
-  createEnvironmentTextures() {
-      // Simple Cloud
-      const g = this.make.graphics({add:false});
-      g.fillStyle(0xffffff);
-      g.fillCircle(20, 20, 20); g.fillCircle(40, 20, 25); g.fillCircle(60, 20, 20);
-      g.generateTexture('cloud', 100, 50); g.destroy();
   }
 }
 
@@ -333,7 +301,7 @@ const config = {
   scale: { mode: Phaser.Scale.RESIZE, parent: 'game-container', width: '100%', height: '100%' },
   physics: { default: 'arcade', arcade: { gravity: { y: 1600 }, debug: false } },
   scene: GameScene,
-  backgroundColor: '#87CEEB'
+  backgroundColor: '#000'
 };
 
 new Phaser.Game(config);
