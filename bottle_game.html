@@ -257,22 +257,65 @@ class GameScene extends Phaser.Scene {
 
   // --- CHARACTER & ITEM GENERATORS ---
   createPlayerPoses() {
-    const draw = (key, legL, legR, armL, armR) => {
-        const g = this.make.graphics({add:false});
-        g.fillStyle(0x1565c0); g.fillRect(15, 60+legL, 10, 25); g.fillRect(35, 60+legR, 10, 25);
-        g.fillStyle(0x2196f3); g.fillRoundedRect(10, 30, 40, 35, 5);
-        g.fillStyle(0x2196f3); g.fillRoundedRect(2, 30+armR, 10, 20, 3); g.fillRoundedRect(48, 30+legL, 10, 20, 3);
-        g.fillStyle(0xffccbc); g.fillCircle(7, 53+armR, 5); g.fillCircle(53, 53+legL, 5);
-        g.fillStyle(0xffccbc); g.fillCircle(30, 15, 14);
-        g.fillStyle(0x3e2723); g.fillCircle(30, 10, 15);
-        g.fillStyle(0x000000); g.fillCircle(25, 15, 2); g.fillCircle(35, 15, 2); 
-        g.beginPath(); g.lineStyle(2,0x000000); g.arc(30,20,5,0,Math.PI); g.strokePath(); 
-        g.generateTexture(key, 60, 90); g.destroy();
-    };
-    draw('player_idle', 0,0,0,0);
-    draw('player_walk1', -5, 5, 5, -5);
-    draw('player_walk2', 5, -5, -5, 5);
-  }
+
+  const draw = (key, legSwing = 0, armSwing = 0) => {
+    const g = this.make.graphics({ add: false });
+
+    // ===== SHADOW =====
+    g.fillStyle(0x000000, 0.15);
+    g.fillEllipse(40, 90, 35, 10);
+
+    // ===== LEGS =====
+    g.fillStyle(0x0d47a1);
+    g.fillRoundedRect(26, 62 + legSwing, 10, 26, 4); // left
+    g.fillRoundedRect(44, 62 - legSwing, 10, 26, 4); // right
+
+    // ===== BODY =====
+    g.fillStyle(0x1e88e5);
+    g.fillRoundedRect(22, 32, 36, 34, 8);
+
+    // ===== ARMS =====
+    g.fillStyle(0x1e88e5);
+    g.fillRoundedRect(10, 36 + armSwing, 10, 24, 6); // left arm
+    g.fillRoundedRect(58, 36 - armSwing, 10, 24, 6); // right arm
+
+    // ===== HANDS =====
+    g.fillStyle(0xffccbc);
+    g.fillCircle(15, 62 + armSwing, 4);
+    g.fillCircle(63, 62 - armSwing, 4);
+
+    // ===== HEAD =====
+    g.fillStyle(0xffd7c2);
+    g.fillCircle(40, 18, 14);
+
+    // ===== HAIR =====
+    g.fillStyle(0x3e2723);
+    g.fillRoundedRect(26, 4, 28, 12, 6);
+
+    // ===== EYES =====
+    g.fillStyle(0xffffff);
+    g.fillCircle(35, 17, 3);
+    g.fillCircle(45, 17, 3);
+
+    g.fillStyle(0x000000);
+    g.fillCircle(35, 17, 1.5);
+    g.fillCircle(45, 17, 1.5);
+
+    // ===== SMILE =====
+    g.lineStyle(2, 0x000000);
+    g.beginPath();
+    g.arc(40, 22, 6, 0, Math.PI);
+    g.strokePath();
+
+    g.generateTexture(key, 80, 100);
+    g.destroy();
+  };
+
+  // idle + walk frames
+  draw('player_idle', 0, 0);
+  draw('player_walk1', 6, -4);
+  draw('player_walk2', -6, 4);
+}
 
   createPlatformTextures() {
     const colors = { plat_red: 0xe53935, plat_blue: 0x1e88e5, plat_yellow: 0xfdd835, plat_green: 0x43a047 };
