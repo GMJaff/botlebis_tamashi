@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Poti Game - Custom Background</title>
+  <title>Poti Game - Upgraded</title>
   <style>
     body { margin: 0; padding: 0; background-color: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
     
@@ -86,46 +86,40 @@ class GameScene extends Phaser.Scene {
     this.inputs = { left: false, right: false, jump: false };
     this.collected = 0;
     this.deposited = 0;
-    this.totalBottles = 6;
+    this.totalBottles = 7; // Updated to match platform count
     this.walkTimer = 0;
   }
 
   preload() {
-    // --- LOAD YOUR BACKGROUND HERE ---
-    // Make sure the file is named 'background.png' and is in the same folder
     this.load.image('custom_bg', 'background.png'); 
 
-    // Generate other graphics
-    this.createPlayerPoses();
+    // Generate graphics
+    this.createPlayerPoses(); // <--- UPDATED WITH YOUR NEW CODE
     this.createPlatformTextures();
     this.createItemTextures();
   }
 
   create() {
-    // 1. Setup World Size (1600x1200)
+    // 1. Setup World
     const worldW = 1600;
     const worldH = 1200; 
     this.physics.world.setBounds(0, 0, worldW, worldH);
     
-    // --- ADD BACKGROUND IMAGE ---
-    // We add this FIRST so it is behind everything else
-    // We stretch it (setDisplaySize) to fill the whole world
+    // Background
     const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
     bg.setDisplaySize(worldW, worldH);
 
     // 2. Platforms
     this.platforms = this.physics.add.staticGroup();
     
-    // Invisible Ground Line
-    // I made this transparent (alpha = 0) so you see the background's ground,
-    // but the player still walks on this physics line.
-    const groundY = worldH - 60; // Adjust this number if your character is floating too high/low
+    // Invisible Ground Line for physics
+    const groundY = worldH - 60;
     const ground = this.add.rectangle(worldW/2, groundY, worldW, 60, 0x000000); 
-    ground.setAlpha(0); // Make invisible so we see the background image
+    ground.setAlpha(0); 
     this.physics.add.existing(ground, true);
     this.platforms.add(ground);
 
-    // 3. Floating Platforms
+    // Platform Locations
     const levels = [
       {x: 300, y: groundY - 150, t: 'plat_red'},
       {x: 600, y: groundY - 250, t: 'plat_blue'},
@@ -135,79 +129,95 @@ class GameScene extends Phaser.Scene {
       {x: 1450, y: groundY - 500, t: 'plat_yellow'},
       {x: 200, y: groundY - 450, t: 'plat_red'}
     ];
-    
-    this.tweens.add({
-    targets: this.bottles.getChildren(),
-    angle: { from: -4, to: 4 },
-    duration: 2000,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.easeInOut'
-    });
-
 
     levels.forEach(p => {
       const plat = this.platforms.create(p.x, p.y, p.t);
       plat.refreshBody();
     });
 
-    // 4. Trash Can
+    // 3. Trash Can
     this.trashCan = this.physics.add.staticSprite(worldW - 150, groundY - 80, 'trashcan');
     this.trashCan.setDepth(5);
 
-    // 5. Player
+    // 4. Player
     this.player = this.physics.add.sprite(100, groundY - 200, 'player_idle');
     this.player.setCollideWorldBounds(true);
     this.player.setBounce(0.1);
     this.player.setDepth(10);
-    this.player.body.setSize(40, 90);
+    this.player.body.setSize(40, 90); // Adjusted for new character
 
-    // 6. Camera (Zoomed to 0.65)
+    // 5. Camera (Maintained your settings)
     this.cameras.main.setBounds(0, 0, worldW, worldH);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
     this.cameras.main.setZoom(0.65);
 
-    // 7. Bottles
+    // --- 6. NEW BOTTLE PHYSICS SYSTEM ---
     this.bottles = this.physics.add.group();
 
-    const bottlePositions = [
-      { x: 420, y: 480 },
-      { x: 720, y: 360 },
-      { x: 1040, y: 300 }
-    ];
-    
-    bottlePositions.forEach((p, i) => {
-      const bottle = this.bottles.create(p.x, p.y, 'bottle');
-    
-      bottle.setGravityY(-300);        // cancels most gravity
-      bottle.setDrag(50, 0);           // smooth movement
-      bottle.setBounce(0.2);
-      bottle.setImmovable(true);
-    
-      // custom float data
-      bottle.baseY = p.y;
-      bottle.floatSpeed = 1 + Math.random() * 0.5;
-      bottle.floatOffset = Math.random() * Math.PI * 2;
-      bottle.driftDir = Math.random() > 0.5 ? 1 : -1;
+    // I am applying your new physics logic to the bottles on the platforms
+    levels.forEach((p, i) => {
+        // Place bottle slightly above platform
+        const bottle = this.bottles.create(p.x, p.y - 70, 'bottle');
+
+        // YOUR NEW PHYSICS PARAMETERS:
+        bottle.setGravityY(-300);        // cancels most gravity
+        bottle.setDrag(50, 0);           // smooth movement
+        bottle.setBounce(0.2);
+        bottle.setImmovable(true);
+
+        // Custom float data
+        bottle.baseY = p.y - 70; // Set base Y relative to platform
+        bottle.floatSpeed = 1 + Math.random() * 0.5;
+        bottle.floatOffset = Math.random() * Math.PI * 2;
+        bottle.driftDir = Math.random() > 0.5 ? 1 : -1;
     });
 
+    // YOUR TWEEN ANIMATION
+    this.tweens.add({
+        targets: this.bottles.getChildren(),
+        angle: { from: -4, to: 4 },
+        duration: 2000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+    });
+    // -------------------------------------
 
-    // 8. Collisions
+    // 7. Collisions
     this.physics.add.collider(this.player, this.platforms);
-    this.physics.add.collider(this.bottles, this.platforms);
+    // Note: We don't need bottle-platform collider anymore because they float!
     this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
     
-    // 9. Controls
+    // 8. Controls
     this.cursors = this.input.keyboard.createCursorKeys();
     this.setupTouchControls();
   }
 
   update(time, delta) {
+    // Deposit Logic
     const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
     if (dist < 100 && this.collected > 0) {
         this.depositBottles();
     }
 
+    // --- NEW BOTTLE FLOAT UPDATE LOGIC ---
+    const t = this.time.now * 0.002;
+
+    this.bottles.children.iterate(bottle => {
+        if (!bottle) return;
+
+        // Smooth vertical floating
+        const targetY = bottle.baseY + Math.sin(t * bottle.floatSpeed + bottle.floatOffset) * 12;
+        bottle.y = Phaser.Math.Linear(bottle.y, targetY, 0.08);
+
+        // Gentle horizontal drift
+        bottle.setVelocityX(
+            Math.sin(t * 0.6 + bottle.floatOffset) * 15 * bottle.driftDir
+        );
+    });
+    // -------------------------------------
+
+    // Movement
     const speed = 400;
     const jumpForce = -950;
     const left = this.cursors.left.isDown || this.inputs.left;
@@ -236,7 +246,7 @@ class GameScene extends Phaser.Scene {
 
   animateWalk(delta) {
     if (!this.player.body.touching.down) {
-        this.player.setTexture('player_walk2'); 
+        this.player.setTexture('player_walk2');
         return;
     }
     this.walkTimer += delta;
@@ -245,24 +255,6 @@ class GameScene extends Phaser.Scene {
         this.player.setTexture(cur === 'player_walk1' ? 'player_walk2' : 'player_walk1');
         this.walkTimer = 0;
     }
-    const t = this.time.now * 0.002;
-
-    this.bottles.children.iterate(bottle => {
-      if (!bottle) return;
-    
-      // smooth vertical floating
-      const targetY =
-        bottle.baseY +
-        Math.sin(t * bottle.floatSpeed + bottle.floatOffset) * 12;
-    
-      bottle.y = Phaser.Math.Linear(bottle.y, targetY, 0.08);
-    
-      // gentle horizontal drift
-      bottle.setVelocityX(
-        Math.sin(t * 0.6 + bottle.floatOffset) * 15 * bottle.driftDir
-      );
-});
-
   }
 
   collectBottle(player, bottle) {
@@ -301,67 +293,66 @@ class GameScene extends Phaser.Scene {
     bind('btn-left', 'left'); bind('btn-right', 'right'); bind('btn-jump', 'jump');
   }
 
-  // --- CHARACTER & ITEM GENERATORS ---
+  // --- NEW HIGH QUALITY CHARACTER GENERATOR ---
   createPlayerPoses() {
+    const draw = (key, legSwing = 0, armSwing = 0) => {
+      const g = this.make.graphics({ add: false });
 
-  const draw = (key, legSwing = 0, armSwing = 0) => {
-    const g = this.make.graphics({ add: false });
+      // ===== SHADOW =====
+      g.fillStyle(0x000000, 0.15);
+      g.fillEllipse(40, 90, 35, 10);
 
-    // ===== SHADOW =====
-    g.fillStyle(0x000000, 0.15);
-    g.fillEllipse(40, 90, 35, 10);
+      // ===== LEGS =====
+      g.fillStyle(0x0d47a1);
+      g.fillRoundedRect(26, 62 + legSwing, 10, 26, 4); // left
+      g.fillRoundedRect(44, 62 - legSwing, 10, 26, 4); // right
 
-    // ===== LEGS =====
-    g.fillStyle(0x0d47a1);
-    g.fillRoundedRect(26, 62 + legSwing, 10, 26, 4); // left
-    g.fillRoundedRect(44, 62 - legSwing, 10, 26, 4); // right
+      // ===== BODY =====
+      g.fillStyle(0x1e88e5);
+      g.fillRoundedRect(22, 32, 36, 34, 8);
 
-    // ===== BODY =====
-    g.fillStyle(0x1e88e5);
-    g.fillRoundedRect(22, 32, 36, 34, 8);
+      // ===== ARMS =====
+      g.fillStyle(0x1e88e5);
+      g.fillRoundedRect(10, 36 + armSwing, 10, 24, 6); // left arm
+      g.fillRoundedRect(58, 36 - armSwing, 10, 24, 6); // right arm
 
-    // ===== ARMS =====
-    g.fillStyle(0x1e88e5);
-    g.fillRoundedRect(10, 36 + armSwing, 10, 24, 6); // left arm
-    g.fillRoundedRect(58, 36 - armSwing, 10, 24, 6); // right arm
+      // ===== HANDS =====
+      g.fillStyle(0xffccbc);
+      g.fillCircle(15, 62 + armSwing, 4);
+      g.fillCircle(63, 62 - armSwing, 4);
 
-    // ===== HANDS =====
-    g.fillStyle(0xffccbc);
-    g.fillCircle(15, 62 + armSwing, 4);
-    g.fillCircle(63, 62 - armSwing, 4);
+      // ===== HEAD =====
+      g.fillStyle(0xffd7c2);
+      g.fillCircle(40, 18, 14);
 
-    // ===== HEAD =====
-    g.fillStyle(0xffd7c2);
-    g.fillCircle(40, 18, 14);
+      // ===== HAIR =====
+      g.fillStyle(0x3e2723);
+      g.fillRoundedRect(26, 4, 28, 12, 6);
 
-    // ===== HAIR =====
-    g.fillStyle(0x3e2723);
-    g.fillRoundedRect(26, 4, 28, 12, 6);
+      // ===== EYES =====
+      g.fillStyle(0xffffff);
+      g.fillCircle(35, 17, 3);
+      g.fillCircle(45, 17, 3);
 
-    // ===== EYES =====
-    g.fillStyle(0xffffff);
-    g.fillCircle(35, 17, 3);
-    g.fillCircle(45, 17, 3);
+      g.fillStyle(0x000000);
+      g.fillCircle(35, 17, 1.5);
+      g.fillCircle(45, 17, 1.5);
 
-    g.fillStyle(0x000000);
-    g.fillCircle(35, 17, 1.5);
-    g.fillCircle(45, 17, 1.5);
+      // ===== SMILE =====
+      g.lineStyle(2, 0x000000);
+      g.beginPath();
+      g.arc(40, 22, 6, 0, Math.PI);
+      g.strokePath();
 
-    // ===== SMILE =====
-    g.lineStyle(2, 0x000000);
-    g.beginPath();
-    g.arc(40, 22, 6, 0, Math.PI);
-    g.strokePath();
+      g.generateTexture(key, 80, 100);
+      g.destroy();
+    };
 
-    g.generateTexture(key, 80, 100);
-    g.destroy();
-  };
-
-  // idle + walk frames
-  draw('player_idle', 0, 0);
-  draw('player_walk1', 6, -4);
-  draw('player_walk2', -6, 4);
-}
+    // idle + walk frames
+    draw('player_idle', 0, 0);
+    draw('player_walk1', 6, -4);
+    draw('player_walk2', -6, 4);
+  }
 
   createPlatformTextures() {
     const colors = { plat_red: 0xe53935, plat_blue: 0x1e88e5, plat_yellow: 0xfdd835, plat_green: 0x43a047 };
