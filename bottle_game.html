@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Poti Game - Fixed Bottles</title>
+  <title>Poti Game - Wide View</title>
   <style>
     body { margin: 0; padding: 0; background-color: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
     
@@ -100,26 +100,27 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
-    // 1. Setup World
+    // 1. Setup World - INCREASED HEIGHT TO FIX BLACK BAR
     const worldW = 1600;
-    const worldH = 1200; 
+    const worldH = 2200; // <--- Changed from 1200 to 2200
     this.physics.world.setBounds(0, 0, worldW, worldH);
     
-    // Background
+    // Background - Stretched to fill new huge world
     const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
     bg.setDisplaySize(worldW, worldH);
 
     // 2. Platforms
     this.platforms = this.physics.add.staticGroup();
     
-    // Invisible Ground Line for physics
-    const groundY = worldH - 60;
+    // Invisible Ground Line
+    // This moves down automatically because it uses worldH
+    const groundY = worldH - 100; 
     const ground = this.add.rectangle(worldW/2, groundY, worldW, 60, 0x000000); 
     ground.setAlpha(0); 
     this.physics.add.existing(ground, true);
     this.platforms.add(ground);
 
-    // Platform Locations
+    // Platform Locations (Relative to groundY, so they move down too)
     const levels = [
       {x: 300, y: groundY - 150, t: 'plat_red'},
       {x: 600, y: groundY - 250, t: 'plat_blue'},
@@ -146,30 +147,25 @@ class GameScene extends Phaser.Scene {
     this.player.setDepth(10);
     this.player.body.setSize(40, 90); 
 
-    // 5. Camera 
+    // 5. Camera - ZOOM SET TO 0.45
     this.cameras.main.setBounds(0, 0, worldW, worldH);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setZoom(0.45);
+    this.cameras.main.setZoom(0.45); // <--- YOUR ZOOM SETTING
 
-    // --- 6. FIXED BOTTLE PHYSICS ---
+    // 6. Bottles
     this.bottles = this.physics.add.group();
 
     levels.forEach((p, i) => {
-        // Create bottle
         const bottle = this.bottles.create(p.x, p.y - 70, 'bottle');
-
-        // IMPORTANT FIX: Disable gravity completely so they don't fall
         bottle.body.allowGravity = false; 
         bottle.setImmovable(true);
 
-        // Custom float data
         bottle.baseY = p.y - 70; 
         bottle.floatSpeed = 1 + Math.random() * 0.5;
         bottle.floatOffset = Math.random() * Math.PI * 2;
         bottle.driftDir = Math.random() > 0.5 ? 1 : -1;
     });
 
-    // Tween for rotation
     this.tweens.add({
         targets: this.bottles.getChildren(),
         angle: { from: -4, to: 4 },
@@ -178,7 +174,6 @@ class GameScene extends Phaser.Scene {
         repeat: -1,
         ease: 'Sine.easeInOut'
     });
-    // -------------------------------------
 
     // 7. Collisions
     this.physics.add.collider(this.player, this.platforms);
@@ -190,28 +185,19 @@ class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    // Deposit Logic
     const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
     if (dist < 100 && this.collected > 0) {
         this.depositBottles();
     }
 
-    // --- BOTTLE FLOAT LOGIC ---
+    // Bottle Float
     const t = this.time.now * 0.002;
-
     this.bottles.children.iterate(bottle => {
         if (!bottle) return;
-
-        // Smooth vertical floating relative to baseY
         const targetY = bottle.baseY + Math.sin(t * bottle.floatSpeed + bottle.floatOffset) * 12;
         bottle.y = Phaser.Math.Linear(bottle.y, targetY, 0.08);
-
-        // Gentle horizontal drift
-        bottle.setVelocityX(
-            Math.sin(t * 0.6 + bottle.floatOffset) * 15 * bottle.driftDir
-        );
+        bottle.setVelocityX(Math.sin(t * 0.6 + bottle.floatOffset) * 15 * bottle.driftDir);
     });
-    // -------------------------------------
 
     // Movement
     const speed = 400;
