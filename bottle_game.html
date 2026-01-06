@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Poti Game - Toxic Level 2</title>
+  <title>Poti Game - Story Mode</title>
   <style>
     body { margin: 0; padding: 0; background-color: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
     
@@ -34,15 +34,18 @@
     #popup-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85);
       display: flex; justify-content: center; align-items: center; z-index: 100;
-      visibility: hidden; opacity: 0; transition: opacity 0.3s;
+      /* Visibility handled by JS now */
     }
     #popup-box {
       background: white; padding: 25px; border-radius: 12px; text-align: center; width: 300px;
       border-top: 6px solid #43a047;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
+    #popup-title { margin-top: 0; color: #333; }
     .popup-btn {
       background: #43a047; color: white; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold;
       border-radius: 6px; margin-top: 15px; cursor: pointer;
+      transition: transform 0.1s;
     }
     .popup-btn:active { transform: scale(0.95); }
 
@@ -53,7 +56,7 @@
 <body>
 
   <div id="ui-layer">
-    <div class="hud-text" id="score-display">Bag: 0 | Total: 0</div>
+    <div class="hud-text" id="score-display">ჩანთაში: 0 | შეგროვებული: 0</div>
   </div>
 
   <div class="controls">
@@ -68,9 +71,9 @@
 
   <div id="popup-overlay">
     <div id="popup-box">
-      <h2 id="popup-title" style="margin-top:0;">You Win!</h2>
-      <p id="popup-msg">Nature is clean again.</p>
-      <button id="popup-btn" class="popup-btn">Start Level 2</button>
+      <h2 id="popup-title">Loading...</h2>
+      <p id="popup-msg">Please wait.</p>
+      <button id="popup-btn" class="popup-btn">Start</button>
     </div>
   </div>
 
@@ -94,10 +97,7 @@ class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // Load existing BG for Level 1
     this.load.image('custom_bg', 'background.png'); 
-    
-    // Load NEW Toxic BG for Level 2
     this.load.image('toxic_bg', 'background2.png'); 
 
     this.createPlayerPoses(); 
@@ -107,9 +107,7 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
-    document.getElementById('popup-overlay').style.visibility = 'hidden';
-    document.getElementById('popup-overlay').style.opacity = '0';
-
+    // 1. Setup the Level
     if (this.levelNumber === 1) {
         this.createLevel1();
     } else {
@@ -139,9 +137,69 @@ class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.setupTouchControls();
     this.updateUI();
+
+    // 2. SHOW THE INTRO POPUP (Pause Physics immediately)
+    this.showIntroPopup();
   }
 
-  // --- LEVEL 1 (Classic - Bright Forest) ---
+  // --- POPUP SYSTEM ---
+  showIntroPopup() {
+    this.physics.pause(); // Stop gravity/water
+    const overlay = document.getElementById('popup-overlay');
+    const title = document.getElementById('popup-title');
+    const msg = document.getElementById('popup-msg');
+    const btn = document.getElementById('popup-btn');
+
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+    title.style.color = "#333";
+
+    if (this.levelNumber === 1) {
+        title.innerText = "დონე 1: ტყის გასუფთავება!";
+        msg.innerText = "ტყე დაბინძურებულია შუშის ბოთლებით. შეაგროვე 7 ბოთლი და გადააგდე ნაგვის ურნაში, რათა სისუფთავე აღადგინო.";
+    } else {
+        title.innerText = "დონე 2: ტოქსიკური წყალდიდობა!";
+        title.style.color = "#d32f2f";
+        msg.innerText = "არა! ტოქსიკური წყალდიდობა მოახლოვდება! შეაგროვე 8 ბოთლი და გადააგდე ნაგვის ურნაში, სანამ წყალი შენთან მოაღწევს.";
+    }
+    btn.onclick = () => {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.visibility = 'hidden', 300);
+        this.physics.resume();
+    };
+  }
+  showEndPopup(isWin) {
+    const overlay = document.getElementById('popup-overlay');
+    const title = document.getElementById('popup-title');
+    const msg = document.getElementById('popup-msg');
+    const btn = document.getElementById('popup-btn');
+
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+
+    if (!isWin) {
+        title.innerText = "თამაშის დასრულება!";
+        title.style.color = "red";
+        msg.innerText = "ტოქსიკურ დინებას ვერ გაუძელი! სცადე თავიდან და გადაარჩინე ბუნება.";
+        btn.innerText = "თავიდან ცდა";
+        btn.onclick = () => { NEXT_LEVEL_ID = 2; this.scene.restart({ level: 2 }); };
+    } else {
+        // Win
+        if (this.levelNumber === 1) {
+            title.innerText = "ტყის გასუფთავება!";
+            title.style.color = "#43a047";
+            msg.innerText = "ყოჩაღ! მაგრამ მოიცა, რაღაც ცუდი ახლოვდება...";
+            btn.innerText = "დონე 2-ის დაწყება";
+            btn.onclick = () => { NEXT_LEVEL_ID = 2; this.scene.restart({ level: 2 }); };
+        } else {
+            title.innerText = "თქვენ გადარჩინეთ ბუნება!";
+            title.style.color = "#43a047";
+            msg.innerText = "თქვენ გადაურჩით წყალდიდობას და გადაარჩინეთ ბუნება! დიდი მადლობა თამაშისთვის.";
+            btn.innerText = "თავიდან დაწყება";
+            btn.onclick = () => { NEXT_LEVEL_ID = 1; this.scene.restart({ level: 1 }); };
+        }
+    }
+  }
   createLevel1() {
     this.totalBottles = 7;
     this.worldW = 1600;
@@ -149,8 +207,6 @@ class GameScene extends Phaser.Scene {
     this.groundY = this.worldH - 100;
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
-    
-    // Uses the original background
     const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
     bg.setDisplaySize(this.worldW, this.worldH);
 
@@ -181,7 +237,6 @@ class GameScene extends Phaser.Scene {
     levels.forEach(p => this.spawnBottle(p.x, p.y - 70));
   }
 
-  // --- LEVEL 2 (Toxic - Sad Grey Forest) ---
   createLevel2() {
     this.totalBottles = 8;
     this.worldW = 1600;
@@ -308,17 +363,7 @@ class GameScene extends Phaser.Scene {
     this.isGameOver = true;
     this.physics.pause();
     this.player.setTint(0x00ff00);
-    
-    const ol = document.getElementById('popup-overlay');
-    document.getElementById('popup-title').innerText = "Game Over";
-    document.getElementById('popup-title').style.color = "red";
-    document.getElementById('popup-msg').innerText = "The flood got you!";
-    const btn = document.getElementById('popup-btn');
-    btn.innerText = "Try Level 2 Again";
-    btn.onclick = () => { NEXT_LEVEL_ID = 2; this.scene.restart({ level: 2 }); };
-    
-    ol.style.visibility = 'visible'; 
-    ol.style.opacity = '1';
+    this.showEndPopup(false);
   }
 
   depositBottles() {
@@ -330,31 +375,13 @@ class GameScene extends Phaser.Scene {
 
     if (this.deposited >= this.totalBottles) {
         this.time.delayedCall(500, () => {
-             const ol = document.getElementById('popup-overlay');
-             ol.style.visibility = 'visible'; ol.style.opacity = '1';
-             const title = document.getElementById('popup-title');
-             const msg = document.getElementById('popup-msg');
-             const btn = document.getElementById('popup-btn');
-
-             if (this.levelNumber === 1) {
-                title.innerText = "Level 1 Cleared!";
-                title.style.color = "#000";
-                msg.innerText = "The forest is safe... for now.";
-                btn.innerText = "Start Level 2";
-                btn.onclick = () => { NEXT_LEVEL_ID = 2; this.scene.restart({ level: 2 }); };
-             } else {
-                title.innerText = "YOU SAVED THE FOREST!";
-                title.style.color = "#43a047";
-                msg.innerText = "You beat the toxic flood!";
-                btn.innerText = "Play Level 1 Again";
-                btn.onclick = () => { NEXT_LEVEL_ID = 1; this.scene.restart({ level: 1 }); };
-             }
+             this.showEndPopup(true);
         });
     }
   }
 
   updateUI() {
-    document.getElementById('score-display').innerText = `Bag: ${this.collected} | Total: ${this.deposited}`;
+    document.getElementById('score-display').innerText = `ჩანთაში: ${this.collected} | შეგროვებული: ${this.deposited}`;
   }
 
   setupTouchControls() {
