@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Poti Game - The Perfect Jump</title>
+  <title>Poti Game - Toxic Level 2</title>
   <style>
     body { margin: 0; padding: 0; background-color: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
     
@@ -94,7 +94,12 @@ class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    // Load existing BG for Level 1
     this.load.image('custom_bg', 'background.png'); 
+    
+    // Load NEW Toxic BG for Level 2
+    this.load.image('toxic_bg', 'background2.png'); 
+
     this.createPlayerPoses(); 
     this.createPlatformTextures();
     this.createItemTextures();
@@ -136,7 +141,7 @@ class GameScene extends Phaser.Scene {
     this.updateUI();
   }
 
-  // --- LEVEL 1 (Classic) ---
+  // --- LEVEL 1 (Classic - Bright Forest) ---
   createLevel1() {
     this.totalBottles = 7;
     this.worldW = 1600;
@@ -145,6 +150,7 @@ class GameScene extends Phaser.Scene {
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     
+    // Uses the original background
     const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
     bg.setDisplaySize(this.worldW, this.worldH);
 
@@ -175,7 +181,7 @@ class GameScene extends Phaser.Scene {
     levels.forEach(p => this.spawnBottle(p.x, p.y - 70));
   }
 
-  // --- LEVEL 2 (Tweaked for Success) ---
+  // --- LEVEL 2 (Toxic - Sad Grey Forest) ---
   createLevel2() {
     this.totalBottles = 8;
     this.worldW = 1600;
@@ -184,7 +190,8 @@ class GameScene extends Phaser.Scene {
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     
-    const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
+    // Uses the NEW Sad background
+    const bg = this.add.image(0, 0, 'toxic_bg').setOrigin(0, 0);
     bg.setDisplaySize(this.worldW, this.worldH);
 
     this.platforms = this.physics.add.staticGroup();
@@ -213,7 +220,6 @@ class GameScene extends Phaser.Scene {
       this.spawnBottle(p.x, p.y - 70);
     });
 
-    // Trash Can adjusted to match new platform
     this.trashCan = this.physics.add.staticSprite(720, this.groundY - 2050, 'trashcan');
     this.trashCan.setDepth(5);
 
