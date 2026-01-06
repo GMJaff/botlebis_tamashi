@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Poti Game - Wide View</title>
+  <title>Poti Game - UI Fix</title>
   <style>
     body { margin: 0; padding: 0; background-color: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
     
-    /* UI Layer */
+    /* UI Layer - Changed justify-content to start (Left Align) */
     #ui-layer {
       position: fixed; top: 0; left: 0; width: 100%; padding: 20px; pointer-events: none; z-index: 10;
-      display: flex; justify-content: space-between;
+      display: flex; justify-content: flex-start; /* Aligns items to the left */
     }
+    
     .hud-text {
       color: white; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 0 #000;
       background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 8px;
@@ -55,7 +56,6 @@
 <body>
 
   <div id="ui-layer">
-    <div class="hud-text">LEVEL 1</div>
     <div class="hud-text" id="score-display">Bag: 0 | Total: 0</div>
   </div>
 
@@ -100,12 +100,12 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
-    // 1. Setup World - INCREASED HEIGHT TO FIX BLACK BAR
+    // 1. Setup World
     const worldW = 1600;
-    const worldH = 2200; // <--- Changed from 1200 to 2200
+    const worldH = 2200; 
     this.physics.world.setBounds(0, 0, worldW, worldH);
     
-    // Background - Stretched to fill new huge world
+    // Background
     const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
     bg.setDisplaySize(worldW, worldH);
 
@@ -113,14 +113,13 @@ class GameScene extends Phaser.Scene {
     this.platforms = this.physics.add.staticGroup();
     
     // Invisible Ground Line
-    // This moves down automatically because it uses worldH
     const groundY = worldH - 100; 
     const ground = this.add.rectangle(worldW/2, groundY, worldW, 60, 0x000000); 
     ground.setAlpha(0); 
     this.physics.add.existing(ground, true);
     this.platforms.add(ground);
 
-    // Platform Locations (Relative to groundY, so they move down too)
+    // Platform Locations
     const levels = [
       {x: 300, y: groundY - 150, t: 'plat_red'},
       {x: 600, y: groundY - 250, t: 'plat_blue'},
@@ -147,10 +146,10 @@ class GameScene extends Phaser.Scene {
     this.player.setDepth(10);
     this.player.body.setSize(40, 90); 
 
-    // 5. Camera - ZOOM SET TO 0.45
+    // 5. Camera 
     this.cameras.main.setBounds(0, 0, worldW, worldH);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setZoom(0.45); // <--- YOUR ZOOM SETTING
+    this.cameras.main.setZoom(0.45);
 
     // 6. Bottles
     this.bottles = this.physics.add.group();
