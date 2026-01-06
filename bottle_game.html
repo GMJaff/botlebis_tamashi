@@ -3,16 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Poti Game - UI Fix</title>
+  <title>Poti Game - Two Distinct Worlds</title>
   <style>
     body { margin: 0; padding: 0; background-color: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
     
-    /* UI Layer - Changed justify-content to start (Left Align) */
     #ui-layer {
       position: fixed; top: 0; left: 0; width: 100%; padding: 20px; pointer-events: none; z-index: 10;
-      display: flex; justify-content: flex-start; /* Aligns items to the left */
+      display: flex; justify-content: flex-start;
     }
-    
     .hud-text {
       color: white; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 0 #000;
       background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 8px;
@@ -33,9 +31,6 @@
     .control-btn:active { background: rgba(0, 255, 0, 0.5); transform: scale(0.95); }
     .jump-btn { background: rgba(255, 165, 0, 0.4); }
 
-    /* Game Area */
-    #game-container { width: 100%; height: 100%; display: block; }
-
     /* Victory Popup */
     #popup-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8);
@@ -50,6 +45,9 @@
       background: #43a047; color: white; border: none; padding: 10px 20px; font-size: 18px;
       border-radius: 6px; margin-top: 15px; cursor: pointer;
     }
+    
+    /* Game Area */
+    #game-container { width: 100%; height: 100%; display: block; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
 </head>
@@ -71,63 +69,115 @@
 
   <div id="popup-overlay">
     <div id="popup-box">
-      <h2 style="margin-top:0;">You Win!</h2>
-      <p>Nature is clean again.</p>
-      <button class="popup-btn" onclick="location.reload()">Replay</button>
+      <h2 id="popup-title" style="margin-top:0;">You Win!</h2>
+      <p id="popup-msg">Nature is clean again.</p>
+      <button id="popup-btn" class="popup-btn">Start Level 2</button>
     </div>
   </div>
 
   <div id="game-container"></div>
 
 <script>
+// We use a global variable to track the next level to load
+let NEXT_LEVEL_ID = 1;
+
 class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
+  }
+
+  init(data) {
+    // Determine which level to load
+    this.levelNumber = data.level || 1;
+    
+    // Reset inputs and stats
     this.inputs = { left: false, right: false, jump: false };
     this.collected = 0;
     this.deposited = 0;
-    this.totalBottles = 7; 
     this.walkTimer = 0;
+    this.isGameOver = false;
   }
 
   preload() {
     this.load.image('custom_bg', 'background.png'); 
-
-    // Generate graphics
     this.createPlayerPoses(); 
     this.createPlatformTextures();
     this.createItemTextures();
+    this.createWaterTexture(); // For Level 2
   }
 
   create() {
-    // 1. Setup World
-    const worldW = 1600;
-    const worldH = 2200; 
-    this.physics.world.setBounds(0, 0, worldW, worldH);
+    // Hiding Popup at start
+    document.getElementById('popup-overlay').style.visibility = 'hidden';
+    document.getElementById('popup-overlay').style.opacity = '0';
+
+    // --- LEVEL SELECTOR ---
+    if (this.levelNumber === 1) {
+        this.createLevel1();
+    } else {
+        this.createLevel2();
+    }
+
+    // --- COMMON SETUP (Player, Camera, Controls) ---
+    
+    // 1. Player (Spawn point depends on level)
+    const startX = 100;
+    const startY = this.groundY - 200;
+    this.player = this.physics.add.sprite(startX, startY, 'player_idle');
+    this.player.setCollideWorldBounds(true);
+    this.player.setBounce(0.1);
+    this.player.setDepth(10);
+    this.player.body.setSize(40, 90); 
+
+    // 2. Camera
+    this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
+    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+    this.cameras.main.setZoom(0.45); // Kept your preferred zoom
+
+    // 3. Collisions (Crucial!)
+    this.physics.add.collider(this.player, this.platforms);
+    // Overlap for bottles
+    this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
+    // Overlap for Toxic Water (Level 2 only)
+    if (this.toxicWater) {
+        this.physics.add.overlap(this.player, this.toxicWater, this.hitWater, null, this);
+    }
+
+    // 4. Controls
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.setupTouchControls();
+    
+    this.updateUI();
+  }
+
+  // --- LEVEL 1: THE GOOD VERSION (Exact Copy) ---
+  createLevel1() {
+    this.totalBottles = 7;
+    this.worldW = 1600;
+    this.worldH = 2200; // The fixed height you liked
+    this.groundY = this.worldH - 100;
+
+    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     
     // Background
     const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
-    bg.setDisplaySize(worldW, worldH);
+    bg.setDisplaySize(this.worldW, this.worldH);
 
-    // 2. Platforms
+    // Platforms
     this.platforms = this.physics.add.staticGroup();
-    
-    // Invisible Ground Line
-    const groundY = worldH - 100; 
-    const ground = this.add.rectangle(worldW/2, groundY, worldW, 60, 0x000000); 
+    const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); 
     ground.setAlpha(0); 
     this.physics.add.existing(ground, true);
     this.platforms.add(ground);
 
-    // Platform Locations
     const levels = [
-      {x: 300, y: groundY - 150, t: 'plat_red'},
-      {x: 600, y: groundY - 250, t: 'plat_blue'},
-      {x: 900, y: groundY - 350, t: 'plat_yellow'},
-      {x: 500, y: groundY - 450, t: 'plat_green'},
-      {x: 1200, y: groundY - 300, t: 'plat_blue'},
-      {x: 1450, y: groundY - 500, t: 'plat_yellow'},
-      {x: 200, y: groundY - 450, t: 'plat_red'}
+      {x: 300, y: this.groundY - 150, t: 'plat_red'},
+      {x: 600, y: this.groundY - 250, t: 'plat_blue'},
+      {x: 900, y: this.groundY - 350, t: 'plat_yellow'},
+      {x: 500, y: this.groundY - 450, t: 'plat_green'},
+      {x: 1200, y: this.groundY - 300, t: 'plat_blue'},
+      {x: 1450, y: this.groundY - 500, t: 'plat_yellow'},
+      {x: 200, y: this.groundY - 450, t: 'plat_red'}
     ];
 
     levels.forEach(p => {
@@ -135,55 +185,99 @@ class GameScene extends Phaser.Scene {
       plat.refreshBody();
     });
 
-    // 3. Trash Can
-    this.trashCan = this.physics.add.staticSprite(worldW - 150, groundY - 80, 'trashcan');
+    // Trash Can
+    this.trashCan = this.physics.add.staticSprite(this.worldW - 150, this.groundY - 80, 'trashcan');
     this.trashCan.setDepth(5);
 
-    // 4. Player
-    this.player = this.physics.add.sprite(100, groundY - 200, 'player_idle');
-    this.player.setCollideWorldBounds(true);
-    this.player.setBounce(0.1);
-    this.player.setDepth(10);
-    this.player.body.setSize(40, 90); 
-
-    // 5. Camera 
-    this.cameras.main.setBounds(0, 0, worldW, worldH);
-    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setZoom(0.45);
-
-    // 6. Bottles
+    // Bottles
     this.bottles = this.physics.add.group();
-
-    levels.forEach((p, i) => {
-        const bottle = this.bottles.create(p.x, p.y - 70, 'bottle');
-        bottle.body.allowGravity = false; 
-        bottle.setImmovable(true);
-
-        bottle.baseY = p.y - 70; 
-        bottle.floatSpeed = 1 + Math.random() * 0.5;
-        bottle.floatOffset = Math.random() * Math.PI * 2;
-        bottle.driftDir = Math.random() > 0.5 ? 1 : -1;
+    levels.forEach(p => {
+        this.spawnBottle(p.x, p.y - 70);
     });
 
+    // Float Animation
     this.tweens.add({
         targets: this.bottles.getChildren(),
         angle: { from: -4, to: 4 },
         duration: 2000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+    });
+  }
+
+  // --- LEVEL 2: THE TOXIC CLIMB ---
+  createLevel2() {
+    this.totalBottles = 8;
+    this.worldW = 1600;
+    this.worldH = 3000; // Taller World
+    this.groundY = this.worldH - 100;
+
+    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
+    
+    // Background
+    const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
+    bg.setDisplaySize(this.worldW, this.worldH);
+
+    // Platforms (Harder Zig Zag)
+    this.platforms = this.physics.add.staticGroup();
+    const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); 
+    ground.setAlpha(0); 
+    this.physics.add.existing(ground, true);
+    this.platforms.add(ground);
+
+    const levels = [
+        {x: 200, y: this.groundY - 200, t: 'plat_red'},
+        {x: 600, y: this.groundY - 400, t: 'plat_blue'},
+        {x: 1400, y: this.groundY - 600, t: 'plat_yellow'}, // Far Right
+        {x: 800, y: this.groundY - 900, t: 'plat_green'},   // Center
+        {x: 150, y: this.groundY - 1200, t: 'plat_red'},    // Far Left
+        {x: 900, y: this.groundY - 1500, t: 'plat_blue'},
+        {x: 1450, y: this.groundY - 1800, t: 'plat_yellow'}, // Far Right
+        {x: 400, y: this.groundY - 2100, t: 'plat_green'}    // High Left
+    ];
+
+    levels.forEach(p => {
+      const plat = this.platforms.create(p.x, p.y, p.t);
+      plat.refreshBody();
     });
 
-    // 7. Collisions
-    this.physics.add.collider(this.player, this.platforms);
-    this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
-    
-    // 8. Controls
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.setupTouchControls();
+    // Trash Can (VERY HIGH UP)
+    this.trashCan = this.physics.add.staticSprite(800, 200, 'trashcan');
+    this.trashCan.setDepth(5);
+
+    // Bottles
+    this.bottles = this.physics.add.group();
+    levels.forEach(p => {
+        this.spawnBottle(p.x, p.y - 70);
+    });
+
+    // TOXIC WATER
+    this.toxicWater = this.add.tileSprite(this.worldW/2, this.worldH + 600, this.worldW, 1000, 'water');
+    this.toxicWater.setDepth(20);
+    this.toxicWater.setAlpha(0.8);
+    this.physics.add.existing(this.toxicWater);
+    this.toxicWater.body.setAllowGravity(false);
+    this.toxicWater.body.setVelocityY(-35); // Slow rise
+  }
+
+  spawnBottle(x, y) {
+      const bottle = this.bottles.create(x, y, 'bottle');
+      bottle.body.allowGravity = false; 
+      bottle.setImmovable(true);
+      bottle.baseY = y; 
+      bottle.floatSpeed = 1 + Math.random() * 0.5;
+      bottle.floatOffset = Math.random() * Math.PI * 2;
+      bottle.driftDir = Math.random() > 0.5 ? 1 : -1;
   }
 
   update(time, delta) {
+    if (this.isGameOver) return;
+
+    // Water Logic (Level 2)
+    if (this.levelNumber === 2 && this.toxicWater) {
+       this.toxicWater.tilePositionY -= 0.5; // Waves
+    }
+
+    // Deposit Logic
     const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
     if (dist < 100 && this.collected > 0) {
         this.depositBottles();
@@ -244,6 +338,28 @@ class GameScene extends Phaser.Scene {
     this.updateUI();
   }
 
+  hitWater() {
+    if (this.isGameOver) return;
+    this.isGameOver = true;
+    this.physics.pause();
+    this.player.setTint(0x00ff00); // Turn player green
+    
+    // Show Game Over Popup
+    const ol = document.getElementById('popup-overlay');
+    const title = document.getElementById('popup-title');
+    const msg = document.getElementById('popup-msg');
+    const btn = document.getElementById('popup-btn');
+
+    title.innerText = "Game Over";
+    title.style.color = "red";
+    msg.innerText = "The toxic water got you!";
+    btn.innerText = "Try Level 2 Again";
+    btn.onclick = () => { NEXT_LEVEL_ID = 2; this.scene.restart({ level: 2 }); };
+
+    ol.style.visibility = 'visible'; 
+    ol.style.opacity = '1';
+  }
+
   depositBottles() {
     this.deposited += this.collected;
     this.collected = 0;
@@ -254,7 +370,35 @@ class GameScene extends Phaser.Scene {
     if (this.deposited >= this.totalBottles) {
         this.time.delayedCall(500, () => {
             const ol = document.getElementById('popup-overlay');
-            ol.style.visibility = 'visible'; ol.style.opacity = '1';
+            const title = document.getElementById('popup-title');
+            const msg = document.getElementById('popup-msg');
+            const btn = document.getElementById('popup-btn');
+            
+            ol.style.visibility = 'visible'; 
+            ol.style.opacity = '1';
+
+            if (this.levelNumber === 1) {
+                // VICTORY LEVEL 1
+                title.innerText = "You Win!";
+                title.style.color = "black";
+                msg.innerText = "Nature is clean again.";
+                btn.innerText = "Start Level 2";
+                // Setup Button to start Level 2
+                btn.onclick = () => {
+                   NEXT_LEVEL_ID = 2;
+                   this.scene.restart({ level: 2 });
+                };
+            } else {
+                // VICTORY LEVEL 2
+                title.innerText = "FOREST SAVED!";
+                title.style.color = "#43a047";
+                msg.innerText = "You escaped the flood!";
+                btn.innerText = "Play Again";
+                btn.onclick = () => {
+                   NEXT_LEVEL_ID = 1;
+                   this.scene.restart({ level: 1 });
+                };
+            }
         });
     }
   }
@@ -277,16 +421,16 @@ class GameScene extends Phaser.Scene {
   createPlayerPoses() {
     const draw = (key, legSwing = 0, armSwing = 0) => {
       const g = this.make.graphics({ add: false });
-      g.fillStyle(0x000000, 0.15); g.fillEllipse(40, 90, 35, 10); // Shadow
-      g.fillStyle(0x0d47a1); g.fillRoundedRect(26, 62 + legSwing, 10, 26, 4); g.fillRoundedRect(44, 62 - legSwing, 10, 26, 4); // Legs
-      g.fillStyle(0x1e88e5); g.fillRoundedRect(22, 32, 36, 34, 8); // Body
-      g.fillStyle(0x1e88e5); g.fillRoundedRect(10, 36 + armSwing, 10, 24, 6); g.fillRoundedRect(58, 36 - armSwing, 10, 24, 6); // Arms
-      g.fillStyle(0xffccbc); g.fillCircle(15, 62 + armSwing, 4); g.fillCircle(63, 62 - armSwing, 4); // Hands
-      g.fillStyle(0xffd7c2); g.fillCircle(40, 18, 14); // Head
-      g.fillStyle(0x3e2723); g.fillRoundedRect(26, 4, 28, 12, 6); // Hair
-      g.fillStyle(0xffffff); g.fillCircle(35, 17, 3); g.fillCircle(45, 17, 3); // Eyes
-      g.fillStyle(0x000000); g.fillCircle(35, 17, 1.5); g.fillCircle(45, 17, 1.5); // Pupils
-      g.lineStyle(2, 0x000000); g.beginPath(); g.arc(40, 22, 6, 0, Math.PI); g.strokePath(); // Smile
+      g.fillStyle(0x000000, 0.15); g.fillEllipse(40, 90, 35, 10); 
+      g.fillStyle(0x0d47a1); g.fillRoundedRect(26, 62 + legSwing, 10, 26, 4); g.fillRoundedRect(44, 62 - legSwing, 10, 26, 4); 
+      g.fillStyle(0x1e88e5); g.fillRoundedRect(22, 32, 36, 34, 8); 
+      g.fillStyle(0x1e88e5); g.fillRoundedRect(10, 36 + armSwing, 10, 24, 6); g.fillRoundedRect(58, 36 - armSwing, 10, 24, 6); 
+      g.fillStyle(0xffccbc); g.fillCircle(15, 62 + armSwing, 4); g.fillCircle(63, 62 - armSwing, 4); 
+      g.fillStyle(0xffd7c2); g.fillCircle(40, 18, 14); 
+      g.fillStyle(0x3e2723); g.fillRoundedRect(26, 4, 28, 12, 6); 
+      g.fillStyle(0xffffff); g.fillCircle(35, 17, 3); g.fillCircle(45, 17, 3); 
+      g.fillStyle(0x000000); g.fillCircle(35, 17, 1.5); g.fillCircle(45, 17, 1.5); 
+      g.lineStyle(2, 0x000000); g.beginPath(); g.arc(40, 22, 6, 0, Math.PI); g.strokePath(); 
       g.generateTexture(key, 80, 100); g.destroy();
     };
     draw('player_idle', 0, 0);
@@ -313,6 +457,16 @@ class GameScene extends Phaser.Scene {
     g.fillStyle(0x424242); g.fillRoundedRect(5,20,60,70,5);
     g.fillStyle(0x66bb6a); g.fillTriangle(35,40,20,65,50,65);
     g.generateTexture('trashcan', 70, 95); g.destroy();
+  }
+
+  createWaterTexture() {
+      const g = this.make.graphics({add:false});
+      g.fillStyle(0x69f0ae, 0.8); 
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle(0x00e676, 0.9); 
+      g.fillRect(0, 0, 64, 10);
+      g.generateTexture('water', 64, 64);
+      g.destroy();
   }
 }
 
