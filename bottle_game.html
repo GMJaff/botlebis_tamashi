@@ -160,7 +160,7 @@ class GameScene extends Phaser.Scene {
     } else {
         title.innerText = "დონე 2: ტოქსიკური წყალდიდობა!";
         title.style.color = "#d32f2f";
-        msg.innerText = "არა! ტოქსიკური წყალდიდობა მოახლოვდება! შეაგროვე 8 ბოთლი და გადააგდე ნაგვის ურნაში, სანამ წყალი შენთან მოაღწევს.";
+        msg.innerText = "არა! ტოქსიკური წყალდიდობა ახლოვდება! შეაგროვე 8 ბოთლი და გადააგდე ნაგვის ურნაში, სანამ წყალი შენთან მოაღწევს. ურნა დინებამ სადღაც გადაისროლა";
     }
     btn.onclick = () => {
         overlay.style.opacity = '0';
@@ -194,7 +194,7 @@ class GameScene extends Phaser.Scene {
         } else {
             title.innerText = "თქვენ გადარჩინეთ ბუნება!";
             title.style.color = "#43a047";
-            msg.innerText = "თქვენ გადაურჩით წყალდიდობას და გადაარჩინეთ ბუნება! დიდი მადლობა თამაშისთვის.";
+            msg.innerText = "თქვენ გადაურჩით წყალდიდობას და გადაარჩინეთ ბუნება! მადლობა თამაშისთვის.";
             btn.innerText = "თავიდან დაწყება";
             btn.onclick = () => { NEXT_LEVEL_ID = 1; this.scene.restart({ level: 1 }); };
         }
