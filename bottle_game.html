@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Poti Game - Complete Story</title>
+  <title>Poti Game - Boss Fight</title>
   <style>
     body { margin: 0; padding: 0; background-color: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
     
@@ -93,7 +93,12 @@ class GameScene extends Phaser.Scene {
     this.deposited = 0;
     this.walkTimer = 0;
     this.isGameOver = false;
-    this.rainTimer = null; // Specific for Level 3
+    
+    // Boss Variables
+    this.boss = null;
+    this.bossHealth = 5;
+    this.bossInvulnerable = false;
+    this.bossSpeed = 200;
   }
 
   preload() {
@@ -104,6 +109,7 @@ class GameScene extends Phaser.Scene {
     this.createPlatformTextures();
     this.createItemTextures();
     this.createWaterTexture(); 
+    this.createBossTexture(); // NEW: Create Boss Asset
   }
 
   create() {
@@ -116,7 +122,7 @@ class GameScene extends Phaser.Scene {
         this.createLevel3();
     }
 
-    const startX = this.levelNumber === 3 ? this.worldW / 2 : (this.levelNumber === 1 ? 100 : 250);
+    const startX = this.levelNumber === 3 ? 100 : (this.levelNumber === 1 ? 100 : 250);
     const startY = this.groundY - 200;
     
     this.player = this.physics.add.sprite(startX, startY, 'player_idle');
@@ -127,12 +133,17 @@ class GameScene extends Phaser.Scene {
 
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setZoom(this.levelNumber === 3 ? 0.7 : 0.45); // Zoom out less for Level 3
+    this.cameras.main.setZoom(this.levelNumber === 3 ? 0.6 : 0.45); // Standard Zoom
 
     this.physics.add.collider(this.player, this.platforms);
     
-    // Level 3 handles overlaps differently (in spawnRain)
-    if (this.levelNumber !== 3) {
+    // Level 3 Boss Collision Logic
+    if (this.levelNumber === 3) {
+        this.physics.add.collider(this.boss, this.platforms);
+        this.physics.add.collider(this.player, this.boss, this.hitBoss, null, this);
+        this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
+    } else {
+        // Standard Level 1 & 2 Logic
         this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
     }
 
@@ -144,15 +155,12 @@ class GameScene extends Phaser.Scene {
     this.setupTouchControls();
     this.updateUI();
 
-    // 2. SHOW THE INTRO POPUP
     this.showIntroPopup();
   }
 
   // --- POPUP SYSTEM ---
   showIntroPopup() {
     this.physics.pause(); 
-    if(this.rainTimer) this.rainTimer.paused = true;
-
     const overlay = document.getElementById('popup-overlay');
     const title = document.getElementById('popup-title');
     const msg = document.getElementById('popup-msg');
@@ -170,20 +178,19 @@ class GameScene extends Phaser.Scene {
         title.style.color = "#d32f2f";
         msg.innerText = "ტოქსიკური წყალი მოდის! იჩქარე, შეაგროვე 8 ბოთლი სანამ დაიხრჩობი!";
     } else {
-        title.innerText = "დონე 3: ტოქსიკური წვიმა";
-        title.style.color = "#e65100";
-        msg.innerText = "ცა გაგიჟდა! ბოთლები ციდან ცვივა.\n\nდაიჭირე მწვანე ბოთლები.\nარ შეეხო წითელ ბოთლებს!";
+        title.innerText = "დონე 3: ნაგვის მონსტრი!";
+        title.style.color = "#4a148c";
+        msg.innerText = "ყველა ნაგავი შეგროვდა და მონსტრად იქცა!\n\n1. დაახტი თავზე რომ დაარტყა.\n2. ყოველი დარტყმისას ის ბოთლს აგდებს.\n3. არ შეეხო გვერდიდან!";
     }
 
     btn.onclick = () => {
         overlay.style.opacity = '0';
         setTimeout(() => overlay.style.visibility = 'hidden', 300);
         this.physics.resume();
-        if(this.rainTimer) this.rainTimer.paused = false;
     };
   }
 
-  showEndPopup(isWin, deathMsg = "You died!") {
+  showEndPopup(isWin) {
     const overlay = document.getElementById('popup-overlay');
     const title = document.getElementById('popup-title');
     const msg = document.getElementById('popup-msg');
@@ -195,11 +202,10 @@ class GameScene extends Phaser.Scene {
     if (!isWin) {
         title.innerText = "წააგე!";
         title.style.color = "red";
-        msg.innerText = deathMsg;
+        msg.innerText = "მონსტრმა გაჯობა. სცადე თავიდან.";
         btn.innerText = "თავიდან ცდა";
         btn.onclick = () => { this.scene.restart({ level: this.levelNumber }); };
     } else {
-        // WIN Logic
         if (this.levelNumber === 1) {
             title.innerText = "დონე 1 დასრულდა!";
             title.style.color = "#43a047";
@@ -209,14 +215,13 @@ class GameScene extends Phaser.Scene {
         } else if (this.levelNumber === 2) {
             title.innerText = "გადაურჩი წყალდიდობას!";
             title.style.color = "#43a047";
-            msg.innerText = "მაგრამ ახლა ციდან ნაგავი ცვივა!";
-            btn.innerText = "დონე 3";
+            msg.innerText = "მაგრამ რაღაც დიდი გამოჩნდა...";
+            btn.innerText = "დონე 3 (BOSS)";
             btn.onclick = () => { NEXT_LEVEL_ID = 3; this.scene.restart({ level: 3 }); };
         } else {
-            // FINISHED GAME
-            title.innerText = "თქვენ გაიმარჯვეთ!";
-            title.style.color = "#FFD700"; // Gold
-            msg.innerHTML = "გილოცავ! შენ სრულად გაასუფთავე ბუნება.<br>შენ ხარ გმირი!";
+            title.innerText = "გამარჯვება!";
+            title.style.color = "#FFD700"; 
+            msg.innerHTML = "შენ დაამარცხე ნაგვის მონსტრი და გადაარჩინე სამყარო!<br>გილოცავ!";
             btn.innerText = "თავიდან დაწყება";
             btn.onclick = () => { NEXT_LEVEL_ID = 1; this.scene.restart({ level: 1 }); };
         }
@@ -262,140 +267,108 @@ class GameScene extends Phaser.Scene {
     this.toxicWater.body.setVelocityY(-25); 
   }
 
-  // --- LEVEL 3 (Toxic Rain - SURVIVAL) ---
+  // --- LEVEL 3 (BOSS FIGHT) ---
   createLevel3() {
-    this.totalBottles = 10; // Catch 10 green ones
-    this.worldW = 800; // Smaller arena
+    this.totalBottles = 5; // Need to hit boss 5 times
+    this.worldW = 1200;
     this.worldH = 1000;
     this.groundY = this.worldH - 50;
-    
+
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     
-    // Use toxic bg but smaller
+    // Background
     const bg = this.add.image(0, 0, 'toxic_bg').setOrigin(0, 0);
     bg.setDisplaySize(this.worldW, this.worldH);
 
+    // Platforms (Arena)
     this.platforms = this.physics.add.staticGroup();
     const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); 
     ground.setAlpha(0); 
     this.physics.add.existing(ground, true);
     this.platforms.add(ground);
 
-    // Simple Arena Platforms
-    this.platforms.create(200, this.groundY - 150, 'plat_blue');
-    this.platforms.create(600, this.groundY - 150, 'plat_blue');
-    this.platforms.create(400, this.groundY - 350, 'plat_green');
+    // Steps to reach boss
+    this.platforms.create(200, this.groundY - 200, 'plat_blue');
+    this.platforms.create(this.worldW - 200, this.groundY - 200, 'plat_blue');
+    this.platforms.create(this.worldW/2, this.groundY - 350, 'plat_green');
 
-    // No trash can in this level (auto collect)
-    this.trashCan = { x: -999, y: -999 }; 
+    // CREATE BOSS
+    this.boss = this.physics.add.sprite(this.worldW - 100, this.groundY - 200, 'boss_texture');
+    this.boss.setCollideWorldBounds(true);
+    this.boss.setBounce(1);
+    this.boss.setVelocityX(-this.bossSpeed); // Start moving left
+    this.boss.body.setSize(100, 100);
 
-    this.bottles = this.physics.add.group(); // This will hold falling items
-
-    // Start Rain Timer
-    this.rainTimer = this.time.addEvent({
-        delay: 900, // New bottle every 0.9 seconds
-        callback: this.spawnFallingBottle,
-        callbackScope: this,
-        loop: true
-    });
+    // Bottles group (empty at start)
+    this.bottles = this.physics.add.group();
+    
+    // Fake trashcan coordinates (auto-collect logic not used, just counting)
+    this.trashCan = { x: -999, y: -999 };
   }
 
-  spawnFallingBottle() {
-      if(this.isGameOver) return;
-      const x = Phaser.Math.Between(50, this.worldW - 50);
-      const isBad = Math.random() < 0.4; // 40% chance of Bad Bottle
-      
-      const bottle = this.physics.add.sprite(x, -50, 'bottle');
-      bottle.isBad = isBad;
-      
-      if(isBad) {
-          bottle.setTint(0xff0000); // RED = BAD
-      } else {
-          bottle.setTint(0x00ff00); // GREEN = GOOD
-      }
+  // --- LOGIC FOR BOSS FIGHT ---
 
-      // Add collision with platforms so they don't fall through
-      this.physics.add.collider(bottle, this.platforms);
-      // Add overlap with player
-      this.physics.add.overlap(this.player, bottle, this.catchRainBottle, null, this);
-  }
+  hitBoss(player, boss) {
+      if (this.isGameOver) return;
+      if (this.bossInvulnerable) return;
 
-  catchRainBottle(player, bottle) {
-      bottle.destroy();
-      if (bottle.isBad) {
-          this.hitWater(); // Reuse death logic
+      // Check if player is ABOVE the boss (Jump Attack)
+      if (player.body.y < boss.body.y - 40 && player.body.velocity.y > 0) {
+          // SUCCESSFUL HIT
+          player.setVelocityY(-600); // Bounce player up
+          this.damageBoss();
       } else {
-          this.deposited++; // Auto deposit in Level 3
-          this.updateUI();
-          if (this.deposited >= this.totalBottles) {
-              this.isGameOver = true;
-              this.physics.pause();
-              this.rainTimer.remove();
-              this.showEndPopup(true);
-          }
+          // FAILED HIT (Touched boss body)
+          this.hitWater(); // Reuse death function
       }
   }
 
-  // --- Common Helpers ---
+  damageBoss() {
+      this.bossInvulnerable = true;
+      this.bossHealth--;
 
-  createStandardPlatforms() {
-    this.platforms = this.physics.add.staticGroup();
-    const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); ground.setAlpha(0);
-    this.physics.add.existing(ground, true); this.platforms.add(ground);
-    this.platformPositions = [
-      {x: 300, y: this.groundY - 150, t: 'plat_red'}, {x: 600, y: this.groundY - 250, t: 'plat_blue'},
-      {x: 900, y: this.groundY - 350, t: 'plat_yellow'}, {x: 500, y: this.groundY - 450, t: 'plat_green'},
-      {x: 1200, y: this.groundY - 300, t: 'plat_blue'}, {x: 1450, y: this.groundY - 500, t: 'plat_yellow'},
-      {x: 200, y: this.groundY - 450, t: 'plat_red'}
-    ];
-    this.platformPositions.forEach(p => this.platforms.create(p.x, p.y, p.t).refreshBody());
-  }
+      // Visual feedback
+      this.boss.setTint(0xff0000);
+      
+      // Spawn a bottle from the boss
+      const bottle = this.bottles.create(this.boss.x, this.boss.y - 50, 'bottle');
+      bottle.setVelocityY(-300);
+      bottle.setVelocityX(Phaser.Math.Between(-200, 200));
 
-  createToxicPlatforms() {
-    // Manually defined for Level 2
-    this.platforms = this.physics.add.staticGroup();
-    const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); ground.setAlpha(0);
-    this.physics.add.existing(ground, true); this.platforms.add(ground);
-    this.platformPositions = [
-        {x: 250, y: this.groundY - 200, t: 'plat_red'}, {x: 650, y: this.groundY - 400, t: 'plat_blue'},
-        {x: 1100, y: this.groundY - 600, t: 'plat_yellow'}, {x: 700, y: this.groundY - 850, t: 'plat_green'},
-        {x: 250, y: this.groundY - 1100, t: 'plat_red'}, {x: 650, y: this.groundY - 1350, t: 'plat_blue'},
-        {x: 1200, y: this.groundY - 1600, t: 'plat_yellow'}, {x: 725, y: this.groundY - 1890, t: 'plat_green'}
-    ];
-  }
-
-  spawnBottle(x, y) {
-      if(!this.bottles) return; 
-      const bottle = this.bottles.create(x, y, 'bottle');
-      bottle.body.allowGravity = false; bottle.setImmovable(true);
-      bottle.baseY = y; bottle.floatSpeed = 1 + Math.random() * 0.5; bottle.floatOffset = Math.random() * Math.PI * 2;
+      // Reset boss after delay
+      this.time.delayedCall(500, () => {
+          this.boss.clearTint();
+          this.bossInvulnerable = false;
+          // Boss gets faster!
+          this.bossSpeed += 50;
+          const currentVel = this.boss.body.velocity.x;
+          this.boss.setVelocityX(currentVel > 0 ? this.bossSpeed : -this.bossSpeed);
+      });
   }
 
   update(time, delta) {
     if (this.isGameOver) return;
 
-    // Level 2 Water Logic
-    if (this.levelNumber === 2 && this.toxicWater) {
-       this.toxicWater.tilePositionY -= 0.5;
-    }
+    // L2 Water
+    if (this.levelNumber === 2 && this.toxicWater) this.toxicWater.tilePositionY -= 0.5;
 
-    // Level 1 & 2 Deposit Logic
-    if (this.levelNumber !== 3) {
+    // L1/L2 Deposit Logic
+    if (this.levelNumber < 3) {
         const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
-        if (dist < 100 && this.collected > 0) {
-            this.depositBottles();
-        }
+        if (dist < 100 && this.collected > 0) this.depositBottles();
     }
 
-    // Float animation for static bottles
-    const t = this.time.now * 0.002;
-    this.bottles.children.iterate(bottle => {
-        if (!bottle) return;
-        // Only float if it's NOT a falling bottle (Level 3 bottles have gravity)
-        if (this.levelNumber !== 3) {
-            bottle.y = Phaser.Math.Linear(bottle.y, bottle.baseY + Math.sin(t * bottle.floatSpeed + bottle.floatOffset) * 12, 0.08);
+    // L3 Boss Logic
+    if (this.levelNumber === 3 && this.boss) {
+        // Simple Patrol Logic
+        if (this.boss.body.blocked.left) {
+            this.boss.setVelocityX(this.bossSpeed);
+            this.boss.setFlipX(true); // Flip face
+        } else if (this.boss.body.blocked.right) {
+            this.boss.setVelocityX(-this.bossSpeed);
+            this.boss.setFlipX(false);
         }
-    });
+    }
 
     // MOVEMENT
     const speed = 460; const jumpForce = -980; 
@@ -427,19 +400,29 @@ class GameScene extends Phaser.Scene {
   }
 
   collectBottle(player, bottle) {
-    // Only used in Level 1 & 2
     bottle.destroy();
     this.collected++;
-    this.updateUI();
+    
+    // Level 3 Instant Deposit Logic (Because there is no trash can)
+    if (this.levelNumber === 3) {
+        this.deposited++;
+        this.collected = 0; // reset bag
+        this.updateUI();
+        if (this.deposited >= this.totalBottles) {
+            this.boss.destroy();
+            this.showEndPopup(true);
+        }
+    } else {
+        this.updateUI();
+    }
   }
 
   hitWater() {
     if (this.isGameOver) return;
     this.isGameOver = true;
     this.physics.pause();
-    this.player.setTint(0x00ff00); // Turn player toxic green
-    if(this.rainTimer) this.rainTimer.remove();
-    this.showEndPopup(false, "მოწამლული ბოთლი მოგხვდა!");
+    this.player.setTint(0x00ff00); 
+    this.showEndPopup(false);
   }
 
   depositBottles() {
@@ -457,8 +440,8 @@ class GameScene extends Phaser.Scene {
   }
 
   updateUI() {
-    if(this.levelNumber === 3) {
-        document.getElementById('score-display').innerText = `გადარჩენილი ბოთლები: ${this.deposited} / ${this.totalBottles}`;
+    if (this.levelNumber === 3) {
+        document.getElementById('score-display').innerText = `დარტყმები (ბოთლები): ${this.deposited} / ${this.totalBottles}`;
     } else {
         document.getElementById('score-display').innerText = `ჩანთაში: ${this.collected} | შეგროვებული: ${this.deposited}`;
     }
@@ -475,7 +458,7 @@ class GameScene extends Phaser.Scene {
     bind('btn-left', 'left'); bind('btn-right', 'right'); bind('btn-jump', 'jump');
   }
 
-  // --- TEXTURES (No changes) ---
+  // --- TEXTURES ---
   createPlayerPoses() {
     const draw = (key, legSwing = 0, armSwing = 0) => {
       const g = this.make.graphics({ add: false });
@@ -517,6 +500,53 @@ class GameScene extends Phaser.Scene {
       g.fillStyle(0x69f0ae, 0.8); g.fillRect(0, 0, 64, 64);
       g.fillStyle(0x00e676, 0.9); g.fillRect(0, 0, 64, 10);
       g.generateTexture('water', 64, 64); g.destroy();
+  }
+  createBossTexture() {
+      const g = this.make.graphics({add:false});
+      // Body (Big blobs)
+      g.fillStyle(0x5d4037); g.fillCircle(50, 60, 40);
+      g.fillStyle(0x3e2723); g.fillCircle(70, 40, 30);
+      g.fillStyle(0x4e342e); g.fillCircle(30, 40, 30);
+      // Eyes
+      g.fillStyle(0xffffff); g.fillCircle(35, 45, 10); g.fillCircle(65, 45, 10);
+      g.fillStyle(0xff0000); g.fillCircle(35, 45, 4); g.fillCircle(65, 45, 4);
+      // Eyebrows (Angry)
+      g.lineStyle(4, 0x000000); 
+      g.beginPath(); g.moveTo(20, 30); g.lineTo(45, 40); g.strokePath();
+      g.beginPath(); g.moveTo(80, 30); g.lineTo(55, 40); g.strokePath();
+      
+      g.generateTexture('boss_texture', 100, 100); g.destroy();
+  }
+  createStandardPlatforms() {
+    this.platforms = this.physics.add.staticGroup();
+    const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); ground.setAlpha(0);
+    this.physics.add.existing(ground, true); this.platforms.add(ground);
+    this.platformPositions = [
+      {x: 300, y: this.groundY - 150, t: 'plat_red'}, {x: 600, y: this.groundY - 250, t: 'plat_blue'},
+      {x: 900, y: this.groundY - 350, t: 'plat_yellow'}, {x: 500, y: this.groundY - 450, t: 'plat_green'},
+      {x: 1200, y: this.groundY - 300, t: 'plat_blue'}, {x: 1450, y: this.groundY - 500, t: 'plat_yellow'},
+      {x: 200, y: this.groundY - 450, t: 'plat_red'}
+    ];
+    this.platformPositions.forEach(p => this.platforms.create(p.x, p.y, p.t).refreshBody());
+  }
+
+  createToxicPlatforms() {
+    this.platforms = this.physics.add.staticGroup();
+    const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); ground.setAlpha(0);
+    this.physics.add.existing(ground, true); this.platforms.add(ground);
+    this.platformPositions = [
+        {x: 250, y: this.groundY - 200, t: 'plat_red'}, {x: 650, y: this.groundY - 400, t: 'plat_blue'},
+        {x: 1100, y: this.groundY - 600, t: 'plat_yellow'}, {x: 700, y: this.groundY - 850, t: 'plat_green'},
+        {x: 250, y: this.groundY - 1100, t: 'plat_red'}, {x: 650, y: this.groundY - 1350, t: 'plat_blue'},
+        {x: 1200, y: this.groundY - 1600, t: 'plat_yellow'}, {x: 725, y: this.groundY - 1890, t: 'plat_green'}
+    ];
+  }
+  
+  spawnBottle(x, y) {
+      if(!this.bottles) return; 
+      const bottle = this.bottles.create(x, y, 'bottle');
+      bottle.body.allowGravity = false; bottle.setImmovable(true);
+      bottle.baseY = y; bottle.floatSpeed = 1 + Math.random() * 0.5; bottle.floatOffset = Math.random() * Math.PI * 2;
   }
 }
 
