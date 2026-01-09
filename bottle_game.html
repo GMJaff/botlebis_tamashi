@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Poti Game - Story Mode</title>
+  <title>Poti Game - Complete Story</title>
   <style>
     body { margin: 0; padding: 0; background-color: #000; overflow: hidden; touch-action: none; font-family: 'Arial', sans-serif; }
     
@@ -34,7 +34,6 @@
     #popup-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85);
       display: flex; justify-content: center; align-items: center; z-index: 100;
-      /* Visibility handled by JS now */
     }
     #popup-box {
       background: white; padding: 25px; border-radius: 12px; text-align: center; width: 300px;
@@ -94,6 +93,7 @@ class GameScene extends Phaser.Scene {
     this.deposited = 0;
     this.walkTimer = 0;
     this.isGameOver = false;
+    this.rainTimer = null; // Specific for Level 3
   }
 
   preload() {
@@ -107,14 +107,16 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
-    // 1. Setup the Level
+    // 1. Setup the Level based on ID
     if (this.levelNumber === 1) {
         this.createLevel1();
-    } else {
+    } else if (this.levelNumber === 2) {
         this.createLevel2();
+    } else {
+        this.createLevel3();
     }
 
-    const startX = this.levelNumber === 1 ? 100 : 250;
+    const startX = this.levelNumber === 3 ? this.worldW / 2 : (this.levelNumber === 1 ? 100 : 250);
     const startY = this.groundY - 200;
     
     this.player = this.physics.add.sprite(startX, startY, 'player_idle');
@@ -125,11 +127,15 @@ class GameScene extends Phaser.Scene {
 
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setZoom(0.45);
+    this.cameras.main.setZoom(this.levelNumber === 3 ? 0.7 : 0.45); // Zoom out less for Level 3
 
     this.physics.add.collider(this.player, this.platforms);
-    this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
     
+    // Level 3 handles overlaps differently (in spawnRain)
+    if (this.levelNumber !== 3) {
+        this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
+    }
+
     if (this.toxicWater) {
         this.physics.add.overlap(this.player, this.toxicWater, this.hitWater, null, this);
     }
@@ -138,13 +144,15 @@ class GameScene extends Phaser.Scene {
     this.setupTouchControls();
     this.updateUI();
 
-    // 2. SHOW THE INTRO POPUP (Pause Physics immediately)
+    // 2. SHOW THE INTRO POPUP
     this.showIntroPopup();
   }
 
   // --- POPUP SYSTEM ---
   showIntroPopup() {
-    this.physics.pause(); // Stop gravity/water
+    this.physics.pause(); 
+    if(this.rainTimer) this.rainTimer.paused = true;
+
     const overlay = document.getElementById('popup-overlay');
     const title = document.getElementById('popup-title');
     const msg = document.getElementById('popup-msg');
@@ -155,20 +163,27 @@ class GameScene extends Phaser.Scene {
     title.style.color = "#333";
 
     if (this.levelNumber === 1) {
-        title.innerText = "დონე 1: ტყის გასუფთავება!";
-        msg.innerText = "ტყე დაბინძურებულია შუშის ბოთლებით. შეაგროვე 7 ბოთლი და გადააგდე ნაგვის ურნაში, რათა სისუფთავე აღადგინო.";
-    } else {
-        title.innerText = "დონე 2: ტოქსიკური წყალდიდობა!";
+        title.innerText = "დონე 1: ტყის გასუფთავება";
+        msg.innerText = "ტყე დაბინძურებულია. შეაგროვე 7 ბოთლი და ჩააგდე ურნაში.";
+    } else if (this.levelNumber === 2) {
+        title.innerText = "დონე 2: წყალდიდობა!";
         title.style.color = "#d32f2f";
-        msg.innerText = "არა! ტოქსიკური წყალდიდობა ახლოვდება! შეაგროვე 8 ბოთლი და გადააგდე ნაგვის ურნაში, სანამ წყალი შენთან მოაღწევს. ურნა დინებამ სადღაც გადაისროლა";
+        msg.innerText = "ტოქსიკური წყალი მოდის! იჩქარე, შეაგროვე 8 ბოთლი სანამ დაიხრჩობი!";
+    } else {
+        title.innerText = "დონე 3: ტოქსიკური წვიმა";
+        title.style.color = "#e65100";
+        msg.innerText = "ცა გაგიჟდა! ბოთლები ციდან ცვივა.\n\nდაიჭირე მწვანე ბოთლები.\nარ შეეხო წითელ ბოთლებს!";
     }
+
     btn.onclick = () => {
         overlay.style.opacity = '0';
         setTimeout(() => overlay.style.visibility = 'hidden', 300);
         this.physics.resume();
+        if(this.rainTimer) this.rainTimer.paused = false;
     };
   }
-  showEndPopup(isWin) {
+
+  showEndPopup(isWin, deathMsg = "You died!") {
     const overlay = document.getElementById('popup-overlay');
     const title = document.getElementById('popup-title');
     const msg = document.getElementById('popup-msg');
@@ -178,74 +193,85 @@ class GameScene extends Phaser.Scene {
     overlay.style.opacity = '1';
 
     if (!isWin) {
-        title.innerText = "თამაშის დასრულება!";
+        title.innerText = "წააგე!";
         title.style.color = "red";
-        msg.innerText = "ტოქსიკურ დინებას ვერ გაუძელი! სცადე თავიდან და გადაარჩინე ბუნება.";
+        msg.innerText = deathMsg;
         btn.innerText = "თავიდან ცდა";
-        btn.onclick = () => { NEXT_LEVEL_ID = 2; this.scene.restart({ level: 2 }); };
+        btn.onclick = () => { this.scene.restart({ level: this.levelNumber }); };
     } else {
-        // Win
+        // WIN Logic
         if (this.levelNumber === 1) {
-            title.innerText = "ტყის გასუფთავება!";
+            title.innerText = "დონე 1 დასრულდა!";
             title.style.color = "#43a047";
-            msg.innerText = "ყოჩაღ! მაგრამ მოიცა, რაღაც ცუდი ახლოვდება...";
-            btn.innerText = "დონე 2-ის დაწყება";
+            msg.innerText = "ყოჩაღ! მაგრამ წყალი დიდდება...";
+            btn.innerText = "დონე 2";
             btn.onclick = () => { NEXT_LEVEL_ID = 2; this.scene.restart({ level: 2 }); };
-        } else {
-            title.innerText = "თქვენ გადარჩინეთ ბუნება!";
+        } else if (this.levelNumber === 2) {
+            title.innerText = "გადაურჩი წყალდიდობას!";
             title.style.color = "#43a047";
-            msg.innerText = "თქვენ გადაურჩით წყალდიდობას და გადაარჩინეთ ბუნება! მადლობა თამაშისთვის.";
+            msg.innerText = "მაგრამ ახლა ციდან ნაგავი ცვივა!";
+            btn.innerText = "დონე 3";
+            btn.onclick = () => { NEXT_LEVEL_ID = 3; this.scene.restart({ level: 3 }); };
+        } else {
+            // FINISHED GAME
+            title.innerText = "თქვენ გაიმარჯვეთ!";
+            title.style.color = "#FFD700"; // Gold
+            msg.innerHTML = "გილოცავ! შენ სრულად გაასუფთავე ბუნება.<br>შენ ხარ გმირი!";
             btn.innerText = "თავიდან დაწყება";
             btn.onclick = () => { NEXT_LEVEL_ID = 1; this.scene.restart({ level: 1 }); };
         }
     }
   }
+
+  // --- LEVEL 1 (Classic) ---
   createLevel1() {
     this.totalBottles = 7;
     this.worldW = 1600;
     this.worldH = 2200;
     this.groundY = this.worldH - 100;
-
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     const bg = this.add.image(0, 0, 'custom_bg').setOrigin(0, 0);
     bg.setDisplaySize(this.worldW, this.worldH);
-
-    this.platforms = this.physics.add.staticGroup();
-    const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); 
-    ground.setAlpha(0); 
-    this.physics.add.existing(ground, true);
-    this.platforms.add(ground);
-
-    const levels = [
-      {x: 300, y: this.groundY - 150, t: 'plat_red'},
-      {x: 600, y: this.groundY - 250, t: 'plat_blue'},
-      {x: 900, y: this.groundY - 350, t: 'plat_yellow'},
-      {x: 500, y: this.groundY - 450, t: 'plat_green'},
-      {x: 1200, y: this.groundY - 300, t: 'plat_blue'},
-      {x: 1450, y: this.groundY - 500, t: 'plat_yellow'},
-      {x: 200, y: this.groundY - 450, t: 'plat_red'}
-    ];
-
-    levels.forEach(p => {
-      this.platforms.create(p.x, p.y, p.t).refreshBody();
-    });
-
+    this.createStandardPlatforms();
     this.trashCan = this.physics.add.staticSprite(this.worldW - 150, this.groundY - 80, 'trashcan');
     this.trashCan.setDepth(5);
-    
     this.bottles = this.physics.add.group();
-    levels.forEach(p => this.spawnBottle(p.x, p.y - 70));
+    this.platformPositions.forEach(p => this.spawnBottle(p.x, p.y - 70));
   }
 
+  // --- LEVEL 2 (Rising Water) ---
   createLevel2() {
     this.totalBottles = 8;
     this.worldW = 1600;
     this.worldH = 3000;
     this.groundY = this.worldH - 100;
+    this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
+    const bg = this.add.image(0, 0, 'toxic_bg').setOrigin(0, 0);
+    bg.setDisplaySize(this.worldW, this.worldH);
+    this.createToxicPlatforms();
+    this.bottles = this.physics.add.group();
+    this.platformPositions.forEach(p => {
+        this.platforms.create(p.x, p.y, p.t).refreshBody();
+        this.spawnBottle(p.x, p.y - 70);
+    });
+    this.trashCan = this.physics.add.staticSprite(720, this.groundY - 2050, 'trashcan');
+    this.toxicWater = this.add.tileSprite(this.worldW/2, this.worldH + 600, this.worldW, 1000, 'water');
+    this.toxicWater.setDepth(20); this.toxicWater.setAlpha(0.8);
+    this.physics.add.existing(this.toxicWater);
+    this.toxicWater.body.setAllowGravity(false);
+    this.toxicWater.body.setVelocityY(-25); 
+  }
 
+  // --- LEVEL 3 (Toxic Rain - SURVIVAL) ---
+  createLevel3() {
+    this.totalBottles = 10; // Catch 10 green ones
+    this.worldW = 800; // Smaller arena
+    this.worldH = 1000;
+    this.groundY = this.worldH - 50;
+    
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     
-    // Uses the NEW Sad background
+    // Use toxic bg but smaller
     const bg = this.add.image(0, 0, 'toxic_bg').setOrigin(0, 0);
     bg.setDisplaySize(this.worldW, this.worldH);
 
@@ -255,86 +281,134 @@ class GameScene extends Phaser.Scene {
     this.physics.add.existing(ground, true);
     this.platforms.add(ground);
 
-    const levels = [
-        {x: 250, y: this.groundY - 200, t: 'plat_red'},    
-        {x: 650, y: this.groundY - 400, t: 'plat_blue'},   
-        {x: 1100, y: this.groundY - 600, t: 'plat_yellow'}, 
-        {x: 700, y: this.groundY - 850, t: 'plat_green'},   
-        {x: 250, y: this.groundY - 1100, t: 'plat_red'},    
-        
-        {x: 650, y: this.groundY - 1350, t: 'plat_blue'}, 
-        
-        {x: 1200, y: this.groundY - 1600, t: 'plat_yellow'}, 
-        
-        {x: 725, y: this.groundY - 1890, t: 'plat_green'}    
-    ];
+    // Simple Arena Platforms
+    this.platforms.create(200, this.groundY - 150, 'plat_blue');
+    this.platforms.create(600, this.groundY - 150, 'plat_blue');
+    this.platforms.create(400, this.groundY - 350, 'plat_green');
 
-    this.bottles = this.physics.add.group();
-    levels.forEach(p => {
-      this.platforms.create(p.x, p.y, p.t).refreshBody();
-      this.spawnBottle(p.x, p.y - 70);
+    // No trash can in this level (auto collect)
+    this.trashCan = { x: -999, y: -999 }; 
+
+    this.bottles = this.physics.add.group(); // This will hold falling items
+
+    // Start Rain Timer
+    this.rainTimer = this.time.addEvent({
+        delay: 900, // New bottle every 0.9 seconds
+        callback: this.spawnFallingBottle,
+        callbackScope: this,
+        loop: true
     });
+  }
 
-    this.trashCan = this.physics.add.staticSprite(720, this.groundY - 2050, 'trashcan');
-    this.trashCan.setDepth(5);
+  spawnFallingBottle() {
+      if(this.isGameOver) return;
+      const x = Phaser.Math.Between(50, this.worldW - 50);
+      const isBad = Math.random() < 0.4; // 40% chance of Bad Bottle
+      
+      const bottle = this.physics.add.sprite(x, -50, 'bottle');
+      bottle.isBad = isBad;
+      
+      if(isBad) {
+          bottle.setTint(0xff0000); // RED = BAD
+      } else {
+          bottle.setTint(0x00ff00); // GREEN = GOOD
+      }
 
-    // WATER
-    this.toxicWater = this.add.tileSprite(this.worldW/2, this.worldH + 600, this.worldW, 1000, 'water');
-    this.toxicWater.setDepth(20);
-    this.toxicWater.setAlpha(0.8);
-    this.physics.add.existing(this.toxicWater);
-    this.toxicWater.body.setAllowGravity(false);
-    this.toxicWater.body.setVelocityY(-25); 
+      // Add collision with platforms so they don't fall through
+      this.physics.add.collider(bottle, this.platforms);
+      // Add overlap with player
+      this.physics.add.overlap(this.player, bottle, this.catchRainBottle, null, this);
+  }
+
+  catchRainBottle(player, bottle) {
+      bottle.destroy();
+      if (bottle.isBad) {
+          this.hitWater(); // Reuse death logic
+      } else {
+          this.deposited++; // Auto deposit in Level 3
+          this.updateUI();
+          if (this.deposited >= this.totalBottles) {
+              this.isGameOver = true;
+              this.physics.pause();
+              this.rainTimer.remove();
+              this.showEndPopup(true);
+          }
+      }
+  }
+
+  // --- Common Helpers ---
+
+  createStandardPlatforms() {
+    this.platforms = this.physics.add.staticGroup();
+    const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); ground.setAlpha(0);
+    this.physics.add.existing(ground, true); this.platforms.add(ground);
+    this.platformPositions = [
+      {x: 300, y: this.groundY - 150, t: 'plat_red'}, {x: 600, y: this.groundY - 250, t: 'plat_blue'},
+      {x: 900, y: this.groundY - 350, t: 'plat_yellow'}, {x: 500, y: this.groundY - 450, t: 'plat_green'},
+      {x: 1200, y: this.groundY - 300, t: 'plat_blue'}, {x: 1450, y: this.groundY - 500, t: 'plat_yellow'},
+      {x: 200, y: this.groundY - 450, t: 'plat_red'}
+    ];
+    this.platformPositions.forEach(p => this.platforms.create(p.x, p.y, p.t).refreshBody());
+  }
+
+  createToxicPlatforms() {
+    // Manually defined for Level 2
+    this.platforms = this.physics.add.staticGroup();
+    const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); ground.setAlpha(0);
+    this.physics.add.existing(ground, true); this.platforms.add(ground);
+    this.platformPositions = [
+        {x: 250, y: this.groundY - 200, t: 'plat_red'}, {x: 650, y: this.groundY - 400, t: 'plat_blue'},
+        {x: 1100, y: this.groundY - 600, t: 'plat_yellow'}, {x: 700, y: this.groundY - 850, t: 'plat_green'},
+        {x: 250, y: this.groundY - 1100, t: 'plat_red'}, {x: 650, y: this.groundY - 1350, t: 'plat_blue'},
+        {x: 1200, y: this.groundY - 1600, t: 'plat_yellow'}, {x: 725, y: this.groundY - 1890, t: 'plat_green'}
+    ];
   }
 
   spawnBottle(x, y) {
       if(!this.bottles) return; 
       const bottle = this.bottles.create(x, y, 'bottle');
-      bottle.body.allowGravity = false; 
-      bottle.setImmovable(true);
-      bottle.baseY = y; 
-      bottle.floatSpeed = 1 + Math.random() * 0.5;
-      bottle.floatOffset = Math.random() * Math.PI * 2;
+      bottle.body.allowGravity = false; bottle.setImmovable(true);
+      bottle.baseY = y; bottle.floatSpeed = 1 + Math.random() * 0.5; bottle.floatOffset = Math.random() * Math.PI * 2;
   }
 
   update(time, delta) {
     if (this.isGameOver) return;
 
+    // Level 2 Water Logic
     if (this.levelNumber === 2 && this.toxicWater) {
        this.toxicWater.tilePositionY -= 0.5;
     }
 
-    const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
-    if (dist < 100 && this.collected > 0) {
-        this.depositBottles();
+    // Level 1 & 2 Deposit Logic
+    if (this.levelNumber !== 3) {
+        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trashCan.x, this.trashCan.y);
+        if (dist < 100 && this.collected > 0) {
+            this.depositBottles();
+        }
     }
 
+    // Float animation for static bottles
     const t = this.time.now * 0.002;
     this.bottles.children.iterate(bottle => {
         if (!bottle) return;
-        bottle.y = Phaser.Math.Linear(bottle.y, bottle.baseY + Math.sin(t * bottle.floatSpeed + bottle.floatOffset) * 12, 0.08);
+        // Only float if it's NOT a falling bottle (Level 3 bottles have gravity)
+        if (this.levelNumber !== 3) {
+            bottle.y = Phaser.Math.Linear(bottle.y, bottle.baseY + Math.sin(t * bottle.floatSpeed + bottle.floatOffset) * 12, 0.08);
+        }
     });
 
     // MOVEMENT
-    const speed = 460; 
-    const jumpForce = -980; 
-    
+    const speed = 460; const jumpForce = -980; 
     const left = this.cursors.left.isDown || this.inputs.left;
     const right = this.cursors.right.isDown || this.inputs.right;
     const jump = this.cursors.up.isDown || this.inputs.jump;
 
     if (left) {
-        this.player.setVelocityX(-speed);
-        this.player.setFlipX(true);
-        this.animateWalk(delta);
+        this.player.setVelocityX(-speed); this.player.setFlipX(true); this.animateWalk(delta);
     } else if (right) {
-        this.player.setVelocityX(speed);
-        this.player.setFlipX(false);
-        this.animateWalk(delta);
+        this.player.setVelocityX(speed); this.player.setFlipX(false); this.animateWalk(delta);
     } else {
-        this.player.setVelocityX(0);
-        this.player.setTexture('player_idle');
-        this.walkTimer = 0;
+        this.player.setVelocityX(0); this.player.setTexture('player_idle'); this.walkTimer = 0;
     }
 
     if (jump && this.player.body.touching.down) {
@@ -353,6 +427,7 @@ class GameScene extends Phaser.Scene {
   }
 
   collectBottle(player, bottle) {
+    // Only used in Level 1 & 2
     bottle.destroy();
     this.collected++;
     this.updateUI();
@@ -362,8 +437,9 @@ class GameScene extends Phaser.Scene {
     if (this.isGameOver) return;
     this.isGameOver = true;
     this.physics.pause();
-    this.player.setTint(0x00ff00);
-    this.showEndPopup(false);
+    this.player.setTint(0x00ff00); // Turn player toxic green
+    if(this.rainTimer) this.rainTimer.remove();
+    this.showEndPopup(false, "მოწამლული ბოთლი მოგხვდა!");
   }
 
   depositBottles() {
@@ -381,7 +457,11 @@ class GameScene extends Phaser.Scene {
   }
 
   updateUI() {
-    document.getElementById('score-display').innerText = `ჩანთაში: ${this.collected} | შეგროვებული: ${this.deposited}`;
+    if(this.levelNumber === 3) {
+        document.getElementById('score-display').innerText = `გადარჩენილი ბოთლები: ${this.deposited} / ${this.totalBottles}`;
+    } else {
+        document.getElementById('score-display').innerText = `ჩანთაში: ${this.collected} | შეგროვებული: ${this.deposited}`;
+    }
   }
 
   setupTouchControls() {
@@ -395,6 +475,7 @@ class GameScene extends Phaser.Scene {
     bind('btn-left', 'left'); bind('btn-right', 'right'); bind('btn-jump', 'jump');
   }
 
+  // --- TEXTURES (No changes) ---
   createPlayerPoses() {
     const draw = (key, legSwing = 0, armSwing = 0) => {
       const g = this.make.graphics({ add: false });
@@ -412,7 +493,6 @@ class GameScene extends Phaser.Scene {
     };
     draw('player_idle', 0, 0); draw('player_walk1', 6, -4); draw('player_walk2', -6, 4);
   }
-
   createPlatformTextures() {
     const colors = { plat_red: 0xe53935, plat_blue: 0x1e88e5, plat_yellow: 0xfdd835, plat_green: 0x43a047 };
     for (const [key, val] of Object.entries(colors)) {
@@ -422,7 +502,6 @@ class GameScene extends Phaser.Scene {
         g.generateTexture(key, 140, 30); g.destroy();
     }
   }
-
   createItemTextures() {
     let g = this.make.graphics({add:false});
     g.fillStyle(0x81d4fa, 0.8); g.fillRoundedRect(10,10,20,30,5);
@@ -433,7 +512,6 @@ class GameScene extends Phaser.Scene {
     g.fillStyle(0x66bb6a); g.fillTriangle(35,40,20,65,50,65);
     g.generateTexture('trashcan', 70, 95); g.destroy();
   }
-  
   createWaterTexture() {
       const g = this.make.graphics({add:false});
       g.fillStyle(0x69f0ae, 0.8); g.fillRect(0, 0, 64, 64);
