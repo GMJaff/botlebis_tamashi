@@ -102,17 +102,16 @@ class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('custom_bg', 'background.png'); 
-    this.load.image('toxic_bg', 'background2.png'); 
+    // --- LOAD BACKGROUND IMAGES ---
+    this.load.image('custom_bg', 'background.png');   // Level 1
+    this.load.image('toxic_bg', 'background2.png');   // Level 2
+    this.load.image('boss_bg', 'background3.png');    // Level 3
 
     this.createPlayerPoses(); 
     this.createPlatformTextures();
     this.createItemTextures();
     this.createWaterTexture(); 
     this.createBossTexture(); 
-    
-    // NEW: Generate the terrifying background for level 3
-    this.createScaryBackground();
   }
 
   create() {
@@ -270,7 +269,7 @@ class GameScene extends Phaser.Scene {
     this.toxicWater.body.setVelocityY(-25); 
   }
 
-  // --- LEVEL 3 (BOSS FIGHT with Scary BG) ---
+  // --- LEVEL 3 (BOSS FIGHT with Background3.png) ---
   createLevel3() {
     this.totalBottles = 5; 
     this.worldW = 1200;
@@ -279,8 +278,8 @@ class GameScene extends Phaser.Scene {
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     
-    // Use the NEW Terrifying Background
-    const bg = this.add.image(0, 0, 'terrifying_bg').setOrigin(0, 0);
+    // USES background3.png HERE
+    const bg = this.add.image(0, 0, 'boss_bg').setOrigin(0, 0);
     bg.setDisplaySize(this.worldW, this.worldH);
 
     // Platforms (Arena)
@@ -519,42 +518,6 @@ class GameScene extends Phaser.Scene {
       g.beginPath(); g.moveTo(80, 30); g.lineTo(55, 40); g.strokePath();
       
       g.generateTexture('boss_texture', 100, 100); g.destroy();
-  }
-  // NEW: Scary Background Generator
-  createScaryBackground() {
-      const W = 2000;
-      const H = 2000;
-      const g = this.make.graphics({add: false});
-      
-      // 1. Dark Void
-      g.fillStyle(0x0f0518); // Very dark purple/black
-      g.fillRect(0,0, W, H);
-      
-      // 2. Red ominous fog/sky
-      g.fillStyle(0x4a0000, 0.3); // Transparent dark red
-      g.fillRect(0, 0, W, H/2);
-      
-      // 3. Spikes/Mountains
-      g.fillStyle(0x000000);
-      g.beginPath();
-      g.moveTo(0, H);
-      for(let i=0; i<=W; i+=100) {
-          g.lineTo(i, H - 200 - Math.random()*300); // Random jagged peaks
-      }
-      g.lineTo(W, H);
-      g.fillPath();
-  
-      // 4. Creepy Eyes in background
-      for(let i=0; i<30; i++) {
-          const x = Math.random() * W;
-          const y = Math.random() * (H/1.5);
-          g.fillStyle(0xff0000, 0.6); // Glowing red
-          g.fillCircle(x, y, 6);
-          g.fillCircle(x+20, y, 6);
-      }
-  
-      g.generateTexture('terrifying_bg', W, H);
-      g.destroy();
   }
 
   createStandardPlatforms() {
