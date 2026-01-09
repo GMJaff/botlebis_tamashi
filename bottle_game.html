@@ -109,7 +109,10 @@ class GameScene extends Phaser.Scene {
     this.createPlatformTextures();
     this.createItemTextures();
     this.createWaterTexture(); 
-    this.createBossTexture(); // NEW: Create Boss Asset
+    this.createBossTexture(); 
+    
+    // NEW: Generate the terrifying background for level 3
+    this.createScaryBackground();
   }
 
   create() {
@@ -133,7 +136,7 @@ class GameScene extends Phaser.Scene {
 
     this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setZoom(this.levelNumber === 3 ? 0.6 : 0.45); // Standard Zoom
+    this.cameras.main.setZoom(this.levelNumber === 3 ? 0.6 : 0.45); 
 
     this.physics.add.collider(this.player, this.platforms);
     
@@ -180,7 +183,7 @@ class GameScene extends Phaser.Scene {
     } else {
         title.innerText = "დონე 3: ნაგვის მონსტრი!";
         title.style.color = "#4a148c";
-        msg.innerText = "ყველა ნაგავი შეგროვდა და მონსტრად იქცა!\n\n1. დაახტი თავზე რომ დაარტყა.\n2. ყოველი დარტყმისას ის ბოთლს აგდებს.\n3. არ შეეხო გვერდიდან!";
+        msg.innerText = "თქვენ ნაგავსაყრელის გულში ხართ! \n\n1. დაახტი მონსტრს თავზე.\n2. შეაგროვე 5 ბოთლი.\n3. არ მოკვდე!";
     }
 
     btn.onclick = () => {
@@ -267,17 +270,17 @@ class GameScene extends Phaser.Scene {
     this.toxicWater.body.setVelocityY(-25); 
   }
 
-  // --- LEVEL 3 (BOSS FIGHT) ---
+  // --- LEVEL 3 (BOSS FIGHT with Scary BG) ---
   createLevel3() {
-    this.totalBottles = 5; // Need to hit boss 5 times
+    this.totalBottles = 5; 
     this.worldW = 1200;
     this.worldH = 1000;
     this.groundY = this.worldH - 50;
 
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     
-    // Background
-    const bg = this.add.image(0, 0, 'toxic_bg').setOrigin(0, 0);
+    // Use the NEW Terrifying Background
+    const bg = this.add.image(0, 0, 'terrifying_bg').setOrigin(0, 0);
     bg.setDisplaySize(this.worldW, this.worldH);
 
     // Platforms (Arena)
@@ -302,7 +305,7 @@ class GameScene extends Phaser.Scene {
     // Bottles group (empty at start)
     this.bottles = this.physics.add.group();
     
-    // Fake trashcan coordinates (auto-collect logic not used, just counting)
+    // Fake trashcan coordinates
     this.trashCan = { x: -999, y: -999 };
   }
 
@@ -403,7 +406,7 @@ class GameScene extends Phaser.Scene {
     bottle.destroy();
     this.collected++;
     
-    // Level 3 Instant Deposit Logic (Because there is no trash can)
+    // Level 3 Instant Deposit Logic
     if (this.levelNumber === 3) {
         this.deposited++;
         this.collected = 0; // reset bag
@@ -517,6 +520,43 @@ class GameScene extends Phaser.Scene {
       
       g.generateTexture('boss_texture', 100, 100); g.destroy();
   }
+  // NEW: Scary Background Generator
+  createScaryBackground() {
+      const W = 2000;
+      const H = 2000;
+      const g = this.make.graphics({add: false});
+      
+      // 1. Dark Void
+      g.fillStyle(0x0f0518); // Very dark purple/black
+      g.fillRect(0,0, W, H);
+      
+      // 2. Red ominous fog/sky
+      g.fillStyle(0x4a0000, 0.3); // Transparent dark red
+      g.fillRect(0, 0, W, H/2);
+      
+      // 3. Spikes/Mountains
+      g.fillStyle(0x000000);
+      g.beginPath();
+      g.moveTo(0, H);
+      for(let i=0; i<=W; i+=100) {
+          g.lineTo(i, H - 200 - Math.random()*300); // Random jagged peaks
+      }
+      g.lineTo(W, H);
+      g.fillPath();
+  
+      // 4. Creepy Eyes in background
+      for(let i=0; i<30; i++) {
+          const x = Math.random() * W;
+          const y = Math.random() * (H/1.5);
+          g.fillStyle(0xff0000, 0.6); // Glowing red
+          g.fillCircle(x, y, 6);
+          g.fillCircle(x+20, y, 6);
+      }
+  
+      g.generateTexture('terrifying_bg', W, H);
+      g.destroy();
+  }
+
   createStandardPlatforms() {
     this.platforms = this.physics.add.staticGroup();
     const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); ground.setAlpha(0);
