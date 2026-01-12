@@ -99,10 +99,12 @@ class GameScene extends Phaser.Scene {
     this.bossHealth = 5;
     this.bossInvulnerable = false;
     this.bossSpeed = 200;
+    
+    // Level 4 Variable
+    this.lightSource = null;
   }
 
   preload() {
-    // --- LOAD BACKGROUND IMAGES ---
     this.load.image('bg_forest', 'background.png');   
     this.load.image('bg_toxic', 'background2.png');   
     this.load.image('bg_boss', 'background3.png');    
@@ -113,6 +115,7 @@ class GameScene extends Phaser.Scene {
     this.createWaterTexture(); 
     this.createBossTexture(); 
     this.createRainTexture(); 
+    this.createLightTexture(); // For Level 4 Flashlight
   }
 
   create() {
@@ -124,7 +127,7 @@ class GameScene extends Phaser.Scene {
     else this.createLevel5(); 
 
     // Player Setup
-    const startX = (this.levelNumber === 5) ? 100 : 250;
+    const startX = (this.levelNumber === 5) ? 200 : 250;
     const startY = this.groundY - 200;
     
     this.player = this.physics.add.sprite(startX, startY, 'player_idle');
@@ -145,7 +148,6 @@ class GameScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.boss, this.hitBoss, null, this);
         this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
     } else {
-        // Standard Logic
         this.physics.add.overlap(this.player, this.bottles, this.collectBottle, null, this);
     }
 
@@ -158,6 +160,21 @@ class GameScene extends Phaser.Scene {
     if (this.levelNumber === 2) {
         this.raindrops = this.physics.add.group();
         this.physics.add.overlap(this.player, this.raindrops, this.hitDanger, null, this);
+    }
+
+    // Setup Level 4 Flashlight Effect
+    if (this.levelNumber === 4) {
+        // Create a dark layer covering the world
+        const darkness = this.add.rectangle(this.worldW/2, this.worldH/2, this.worldW, this.worldH, 0x000000, 0.96);
+        darkness.setDepth(100); // Sit on top of everything
+        
+        // Create the "Light" that follows the player
+        this.lightSource = this.make.image({ x: this.player.x, y: this.player.y, key: 'light_texture', add: false });
+        
+        // Use the light source as a mask for the darkness
+        const mask = new Phaser.Display.Masks.BitmapMask(this, this.lightSource);
+        mask.invertAlpha = true;
+        darkness.setMask(mask);
     }
 
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -193,7 +210,7 @@ class GameScene extends Phaser.Scene {
     } else if (this.levelNumber === 4) {
         title.innerText = "დონე 4: ღამე";
         title.style.color = "#1565c0";
-        msg.innerText = "ღამეა და ცივა. იპოვე 10 ბოთლი რთულ გზებზე.";
+        msg.innerText = "სიბნელეა... ფრთხილად იარე, მხოლოდ ფანარი გინათებს გზას!";
     } else {
         title.innerText = "დონე 5: მონსტრი!";
         title.style.color = "#4a148c";
@@ -249,7 +266,6 @@ class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.add.image(0, 0, 'bg_forest').setOrigin(0, 0).setDisplaySize(this.worldW, this.worldH);
     
-    // 7 Platforms for 7 Bottles
     this.platforms = this.physics.add.staticGroup();
     const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); 
     ground.setAlpha(0);
@@ -269,14 +285,13 @@ class GameScene extends Phaser.Scene {
     positions.forEach(p => this.spawnBottle(p.x, p.y - 70));
   }
 
-  // --- LEVEL 2 (Toxic Rain) - FIXED (8 Platforms) ---
+  // --- LEVEL 2 (Toxic Rain) ---
   createLevel2() {
     this.totalBottles = 8;
     this.worldW = 1600; this.worldH = 2200; this.groundY = this.worldH - 100;
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     this.add.image(0, 0, 'bg_toxic').setOrigin(0, 0).setDisplaySize(this.worldW, this.worldH);
     
-    // 8 Platforms for 8 Bottles
     this.platforms = this.physics.add.staticGroup();
     const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); 
     ground.setAlpha(0);
@@ -317,22 +332,21 @@ class GameScene extends Phaser.Scene {
     this.toxicWater.body.setVelocityY(-25); 
   }
 
-  // --- LEVEL 4 (Night Climb) - FIXED (10 Platforms) ---
+  // --- LEVEL 4 (Night Climb with Flashlight) ---
   createLevel4() {
     this.totalBottles = 10;
     this.worldW = 1600; this.worldH = 2500; this.groundY = this.worldH - 100;
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     
-    // Night Mode
+    // Background is dark blue (visible only under flashlight)
     const bg = this.add.image(0, 0, 'bg_forest').setOrigin(0, 0).setDisplaySize(this.worldW, this.worldH);
-    bg.setTint(0x5555aa); // Dark blue tint
+    bg.setTint(0x5555aa); 
     
     this.platforms = this.physics.add.staticGroup();
     const ground = this.add.rectangle(this.worldW/2, this.groundY, this.worldW, 60, 0x000000); 
     ground.setAlpha(0);
     this.physics.add.existing(ground, true); this.platforms.add(ground);
 
-    // Exactly 10 Platforms
     const positions = [
       {x: 200, y: this.groundY - 200, t: 'plat_blue'}, {x: 600, y: this.groundY - 400, t: 'plat_red'},
       {x: 1000, y: this.groundY - 300, t: 'plat_green'}, {x: 1400, y: this.groundY - 500, t: 'plat_yellow'},
@@ -347,12 +361,14 @@ class GameScene extends Phaser.Scene {
     positions.forEach(p => this.spawnBottle(p.x, p.y - 70));
   }
 
-  // --- LEVEL 5 (BOSS FIGHT) ---
+  // --- LEVEL 5 (BOSS FIGHT) - FIXED SIZE ---
   createLevel5() {
     this.totalBottles = 5; 
-    this.worldW = 1200; this.worldH = 1000; this.groundY = this.worldH - 50;
+    // Increased size to prevent black bars on phone
+    this.worldW = 1600; this.worldH = 2200; this.groundY = this.worldH - 100;
     this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
     
+    // Background now fills the larger world
     this.add.image(0, 0, 'bg_boss').setOrigin(0, 0).setDisplaySize(this.worldW, this.worldH);
 
     this.platforms = this.physics.add.staticGroup();
@@ -361,11 +377,12 @@ class GameScene extends Phaser.Scene {
     this.physics.add.existing(ground, true);
     this.platforms.add(ground);
 
-    this.platforms.create(200, this.groundY - 200, 'plat_blue');
-    this.platforms.create(this.worldW - 200, this.groundY - 200, 'plat_blue');
+    // Centered platforms in new larger world
+    this.platforms.create(this.worldW/2 - 400, this.groundY - 200, 'plat_blue');
+    this.platforms.create(this.worldW/2 + 400, this.groundY - 200, 'plat_blue');
     this.platforms.create(this.worldW/2, this.groundY - 350, 'plat_green');
 
-    this.boss = this.physics.add.sprite(this.worldW - 100, this.groundY - 200, 'boss_texture');
+    this.boss = this.physics.add.sprite(this.worldW - 300, this.groundY - 200, 'boss_texture');
     this.boss.setCollideWorldBounds(true);
     this.boss.setBounce(1);
     this.boss.setVelocityX(-this.bossSpeed);
@@ -393,6 +410,11 @@ class GameScene extends Phaser.Scene {
 
     // L3: Water Logic
     if (this.levelNumber === 3 && this.toxicWater) this.toxicWater.tilePositionY -= 0.5;
+
+    // L4: Flashlight Logic (Move light with player)
+    if (this.levelNumber === 4 && this.lightSource) {
+        this.lightSource.setPosition(this.player.x, this.player.y);
+    }
 
     // L5: Boss Logic
     if (this.levelNumber === 5 && this.boss) {
@@ -444,13 +466,11 @@ class GameScene extends Phaser.Scene {
       this.bossHealth--;
       this.boss.setTint(0xff0000);
       
-      // BOSS DROP FIX: Make bottle float so it doesn't fall into the pit!
       const bottle = this.bottles.create(this.boss.x, this.boss.y - 50, 'bottle');
-      bottle.body.allowGravity = false; // Important fix!
+      bottle.body.allowGravity = false;
       bottle.setImmovable(true); 
       bottle.setVelocity(0,0);
       
-      // Tween it slightly to look nice
       this.tweens.add({
           targets: bottle, y: bottle.y - 30, duration: 1000, yoyo: true, repeat: -1
       });
@@ -533,6 +553,14 @@ class GameScene extends Phaser.Scene {
       g.fillStyle(0x00ff00, 1); 
       g.fillRoundedRect(0,0,8,25,4);
       g.generateTexture('rain_drop', 8, 25); g.destroy();
+  }
+  createLightTexture() {
+      // Creates a fuzzy circle for the flashlight
+      const g = this.make.graphics({add:false});
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(150, 150, 150); // Large 300px light
+      g.generateTexture('light_texture', 300, 300);
+      g.destroy();
   }
   createPlayerPoses() {
     const draw = (key, legSwing = 0, armSwing = 0) => {
